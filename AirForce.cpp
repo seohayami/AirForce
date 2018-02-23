@@ -4222,7 +4222,10 @@ int MapAirForce::SelectGun(int pixelX, int pixelY, DWORD flags, cmdForm *p_form)
 		}
 //		RemoveMenu(hSubmenu, MF_BYCOMMAND, 601);
 		ClientToScreen(m_hwnd, &pt);
-	
+// Pitfall: 2018/02/23
+// this must be "BOOL" not "bool".
+// BOOL is originally integer, but bool is just boolean.
+// They are different from each other.	
 		BOOL selectedID;
 		selectedID = TrackPopupMenu(hSubmenu, 
 			TPM_LEFTALIGN | TPM_RETURNCMD, pt.x, pt.y, 0, m_hwnd, NULL);
