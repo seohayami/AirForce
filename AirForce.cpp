@@ -3201,7 +3201,7 @@ void MapAirForce::paintAndExpand(
 					 history);
 			}
 		}
-		parseManuvMoveOneHexClockRef(&formCenter, 2);
+		parseManuvMoveOneHexClockRef(&formCenter, 12);
 		history.centerCnt ++;
 		paintAndExpand
 			(formCenter,
