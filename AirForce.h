@@ -267,6 +267,7 @@ struct cmdForm {
 	int		selectedAircraft;
 	int		aircraftModel;
 	int		pilotModel;
+	int		aircraftID;
 	wchar_t		aircraftName[64];
 	AircraftStat	acStatus;
 	int		virCorX;
@@ -308,6 +309,27 @@ struct expandHistory {
 // but cannot compile.
 // i dont know why.   2018/02/20
 
+struct hitResult {
+	int	wing;
+	int	fuselage;
+	int	cockpit;
+	int	engine;
+	int	gun;
+	int	fuel;
+};
+
+struct firingEntry {
+	int	attackerACID;
+	int	targetACID;
+	int	gunType;	// 1: ffMg
+				// 2: ffCanon
+				// 3: ffMg+Cannon
+				// 4: FH
+				// 5: FL
+				// 6: F
+	int	dieRoll;
+	hitResult	result;
+};
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -396,7 +418,8 @@ protected:
 		UNDEFINED	= -1,
 		NOT_SELECTED	= 1,
 		SELECTED	= 2,
-		MAP_DEPLOY_DRAG = 3
+		MAP_DEPLOY_DRAG = 3,
+		MAP_FIRE_AIM	= 4
 	};
 
 	struct ResultHitTestHex {
@@ -481,12 +504,14 @@ protected:
 	void 	paintAndExpand(
 			cmdForm		form,
 			int		range,
+			int		clockRef,
 			bool		includeLeft,
 			bool		includeRight,
 			expandHistory	history);
 	void 	paintFireArcClockCond (
 			cmdForm form, 
 			int range, 
+			int clockRef,
 			bool includeLeft, 
 			bool includeRight);
 	void 	paintFireArcClockRef(cmdForm form, int clockRef, int range);
@@ -510,9 +535,11 @@ protected:
 	void 	setSelectedFireArc(cmdForm *p_form, int selectedGun);
 	void 	OnLButtonDownGM_Fire(int pixelX, int pixelY, DWORD flags);
 	void 	OnLButtonDown(int pixelX, int pixelY, DWORD flags);
+	int 	OnLButtonDownSetAcSelected(int pixelX, int pixelY, DWORD flags);
 	void 	OnRButtonDown(int pixelX, int pixelY, DWORD flags);
 	void 	OnLButtonDoubleClicks(int pixelX, int pixelY, DWORD flags);
-	void 	OnLButtonUp();
+	int 	selectTarget(int pixelX, int pixelY, DWORD flags);
+	void 	OnLButtonUp(int pixelX, int pixelY, DWORD flags);
 	int 	getManuvMenuSelItemClimb(int selID, cmdForm *p_formRtnGetManuvable);
 	int 	getManuvMenuSelItemDive(int selID, cmdForm *p_formRtnGetManuvable);
 	void 	ShowManuvMenuSelItem(int selID, int distance, cmdForm *p_form);
@@ -660,6 +687,7 @@ protected:
 public:
 
   //------------------- public member variables ---------------------
+	int	m_id;
 	int	mAircraftModel;
 	int	mPilotModel;
 	wchar_t	mAircraftName[64];
@@ -688,6 +716,7 @@ public:
 
   //------------------- public member functions ---------------------
 	Aircraft::Aircraft() {
+		m_id = -1;
 		m_manuv[0] = MANUV_DP;
 		m_manuv[1] = MANUV_DP;
 		m_manuv[2] = MANUV_EN;
@@ -846,6 +875,7 @@ protected:
 	static int	mNewPlayerID;
 	regStat		mNewPlayerRegStat;
 	static int aircraftID[MAX_AIRCRAFTMODELNUMBER];
+	list<shared_ptr<firingEntry>>::iterator m_firingEntries;
 	int			m_gameTurn;
 
   //------------------- protected member functions ---------------------
