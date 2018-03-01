@@ -4265,6 +4265,9 @@ int MapAirForce::SelectGun(int pixelX, int pixelY, DWORD flags, cmdForm *p_form)
 }
 void MapAirForce::setSelectedFireArc(cmdForm *p_form, int selectedGun)
 {
+// Function: set MapAirForce::m_selectedFireArc 
+// 		m_selectedFireArc.range(selectedGun) is set to positive number.
+// 		m_selectedFireArc.range(other than selectedGun) is set to -1.
 // selectedGun
 // 	=1: FFmg
 //	=2: FFcannon

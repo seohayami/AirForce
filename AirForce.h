@@ -261,6 +261,28 @@ struct gunPower {
 					// above, low, na, na, na, na
 };
 
+struct hitResult {
+	int	wing;
+	int	fuselage;
+	int	cockpit;
+	int	engine;
+	int	gun;
+	int	fuel;
+};
+
+struct firingEntry {
+	int	attackerACID;
+	int	targetACID;
+	int	gunType;	// 1: ffMg
+				// 2: ffCanon
+				// 3: ffMg+Cannon
+				// 4: FH
+				// 5: FL
+				// 6: F
+	int	dieRoll;
+	hitResult	result;
+};
+
 struct cmdForm {
 	CommandToX	command;
 	int		playerID;
@@ -287,6 +309,7 @@ struct cmdForm {
 	struct		damage;
 	firingArcRange	firingRange;
 	gunPower	gunPower;
+	firingEntry	firingEntry;
 };
 
 struct damage {
@@ -308,28 +331,6 @@ struct expandHistory {
 // in the MapAirForce class,
 // but cannot compile.
 // i dont know why.   2018/02/20
-
-struct hitResult {
-	int	wing;
-	int	fuselage;
-	int	cockpit;
-	int	engine;
-	int	gun;
-	int	fuel;
-};
-
-struct firingEntry {
-	int	attackerACID;
-	int	targetACID;
-	int	gunType;	// 1: ffMg
-				// 2: ffCanon
-				// 3: ffMg+Cannon
-				// 4: FH
-				// 5: FL
-				// 6: F
-	int	dieRoll;
-	hitResult	result;
-};
 
 
 ///////////////////////////////////////////////////////////////////////////
