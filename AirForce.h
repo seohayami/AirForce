@@ -172,6 +172,7 @@ enum CommandToX {
 	GET_FIRINGS		= 16,
 	GET_ACID		= 17,
 	USE_AMMO		= 18,
+	MODIFY_DAMAGE		= 19,
 };
 
 #define SELECTED_PLAYER -1

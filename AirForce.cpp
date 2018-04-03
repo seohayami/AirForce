@@ -1813,6 +1813,8 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 		case USE_AMMO:
 			cmdToPlayerUSE_AMMO(form, p_rtn);
 			break;
+		case MODIFY_DAMAGE:
+			break;
 		default:
 			break;
 	}
@@ -6211,6 +6213,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case GET_FIRE_RANGE:
 		case GET_ACID:
 		case USE_AMMO:
+		case MODIFY_DAMAGE:
 			if (form.playerID == SELECTED_PLAYER) {
 				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
 			} else if (form.playerID == ALL_PLAYERS) {
@@ -7364,7 +7367,6 @@ void GameAirForce::reflectFiresToAs()
 {
 	list<std::shared_ptr<firingEntry>>::iterator itrFiringEnt;
 	firingEntry	fe;
-	static int	i = 0;
 
 	for (itrFiringEnt = m_firingEntries.begin(); 
   	     itrFiringEnt != m_firingEntries.end(); 
@@ -7376,10 +7378,96 @@ void GameAirForce::reflectFiresToAs()
 	}
 }
 
+void GameAirForce::setFormDamageFormDamageChr(cmdForm *p_form, firingEntry fe, wchart_t chr)
+{
+	switch (chr) {
+		case L"W":
+			p_form->damage.hit.wing ++;
+			break;
+		case L"F":
+			p_form->damage.hit.fuselage ++;
+			break;
+		case L"C":
+			break;
+		case L"E":
+			break;
+		case L"G":
+			break;
+		case L"L":
+			p_form->damage.hit.fueltank ++;
+			break;
+		default:
+			break;
+
+	}
+}
+
+void GameAirForce::setFormDamageFormFE(cmdForm *p_form, firingEntry fe)
+{
+	wchar_t buf[32] = fe.result;
+	wchar_t ch;
+	wchar_t p_ch = &c;
+
+	int 	i;
+
+	p_form->damage.hit.wing = 0;
+	p_form->damage.hit.fuselage = 0;
+	for (i = 0; i < 2; i++) {
+		p_form->damage.hit.cockpit[i] = 0;
+	}
+	for (i = 0; i < 4; i++) {
+		p_form->damage.hit.engine[i] = 0;
+	}
+	for (i = 0; i < 8; i++) {
+		p_form->damage.hit.gun[i] = 0;
+	}
+	p_form->damage.hit.fueltank = 0;
+
+	while ( ; IsNullOrEmpty(buf); ) {
+		p_ch = buf.Substring(0, 1)
+		buf = buf.Substring(1);
+		setFormDamageFromDamageChr(p_form, fe, ch);
+	}
+}
+
+void GameAirForce::reflectFireToT(firingEntry fe)
+{
+
+	int	acIDtarget = fe.acIDtarget;
+	cmdForm	form;
+
+	form.command = MODIFY_DAMAGE;
+	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = fe.acIDtarget;
+
+	setFormDamageFromFE(&form, fe);
+
+
+
+	gunType = getGunTypeFromFE(fe);
+	cmdToGameMODIFY_DAMAGE(fe);
+}
+
+void GameAirForce::reflectFiresToTs()
+{
+	list<std::shared_ptr<firingEntry>>::iterator itr;
+	firingEntry	fe;
+
+	for (itr = m_firingEntries.begin(); 
+  	     itr != m_firingEntries.end(); 
+	     itr++) {
+		if ((*itr)->gameTurn == m_gameTurn) {
+			fe = **itr;
+			reflectFireToT(fe);
+		}
+	}
+}
+
 void GameAirForce::onExitGameModeFire()
 {
 	resolveFires();
 	reflectFiresToAs();
+	reflectFiresToTs();
 }
 
 void GameAirForce::OnButtonProceed()
