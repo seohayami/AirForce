@@ -48,7 +48,8 @@ enum spdIncTblEntry {
 enum gunType {
 	gT_Non 	= 0,
 	gT_MG 	= 1,
-	gT_CN 	= 2
+	gT_CN 	= 2,
+	gT_MGCN = 3,
 };
 
 enum gunPosition {
@@ -170,6 +171,7 @@ enum CommandToX {
 	DELETE_FIRING		= 15,
 	GET_FIRINGS		= 16,
 	GET_ACID		= 17,
+	USE_AMMO		= 18,
 };
 
 #define SELECTED_PLAYER -1

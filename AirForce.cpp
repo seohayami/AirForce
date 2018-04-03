@@ -1619,6 +1619,18 @@ void PlayerAirForce::cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn)
 	}
 }
 
+void PlayerAirForce::cmdToPlayerUSE_AMMO(cmdForm form, cmdForm *p_rtn)
+{
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+
+	for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+		if ((*itr)->m_id == form.selectedAircraft) {
+			(*itr)->m_ammo.fired.mg += form.gunPower.gunPowerFFmg;
+			(*itr)->m_ammo.fired.cannon += form.gunPower.gunPowerFFcannon;
+		}
+	}
+}
+
 void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 {
 
@@ -1797,6 +1809,9 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 		case GET_ACID:
 			cmdToPlayerGetACIDs(form, p_rtn);
+			break;
+		case USE_AMMO:
+			cmdToPlayerUSE_AMMO(form, p_rtn);
 			break;
 		default:
 			break;
@@ -6195,6 +6210,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case DELETE_MANUV:
 		case GET_FIRE_RANGE:
 		case GET_ACID:
+		case USE_AMMO:
 			if (form.playerID == SELECTED_PLAYER) {
 				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
 			} else if (form.playerID == ALL_PLAYERS) {
@@ -7197,12 +7213,173 @@ void GameAirForce::reflectResolvedFireToFEs()
 	for (i = 0; i < cnt; i++) {
 		reflectResolvedFireToFE(i);
 	}
+}
 
+int GameAirForce::getGunTypeFromACM(int acmID, int gunPosition)
+{
+	int	i;
+	int	gType = 0;
+	int	tmp;
+	BOOL	mg = false;
+	BOOL	cn = false;
+
+	for (i = 0; i < 8; i++) {
+		if (aircraftModels[acmID].gunPosition[i] == gunPosition) {
+			switch (aircraftModels[amcID].gunType) {
+				case gt_Non:
+					break;
+				case gt_MG:
+					mg = true;
+					break
+				case gt_CN:
+					cn = true;
+					break;
+				case gt_MGCN:
+					mg = true;
+					cn = true;
+					break
+				default:
+					break;
+			}
+		}
+
+	}
+	if (mg && cn) {
+		return gt_MGCN;
+	} else if (mg) {
+		return gt_MG;
+	} else if (cn) {
+		return gt_CN;
+	} else {
+		return gt_Non;
+	}
+}
+
+int GameAirForce::getGunTypeFromFE(itrFiringEnt fe)
+{
+	BOOL 	mg = false;
+	BOOL 	cannon = false;
+	int	gunType = gT_Non;
+	cmdForm	form[20];
+
+	if (fe.weapon.gunFactor.gunPowerFFmg > 0) {
+		mg = true;
+	}
+	if (fe.weapon.gunFactor.gunPowerFFcannon > 0) {
+		cannon = true;
+	}
+	if (fe.weapon.gunFactor.gunPowerFH > 0) {
+		cmdToGameGetAC_acID(form, fe.acIDattacker);
+		if (form[0].command != TAIL) {
+			gunType = getGunTypeFromACM(form[0].aircraftModel, gP_FH);
+		}
+		switch (gunType) {
+			case gT_Non:
+				break;
+			case gT_MG:
+				mg = true;
+				break;
+			case gT_CN:
+				cannon = true;
+				break;
+			case gT_MGCN:
+				mg = cannon = true;
+				break;
+			default:
+				break;
+		}
+	}
+	if (fe.weapon.gunFactor.gunPowerFL > 0) {
+		cmdToGameGetAC_acID(form, fe.acIDattacker);
+		if (form[0].command != TAIL) {
+			gunType = getGunTypeFromACM(form[0].aircraftModel, gP_FL);
+		}
+		switch (gunType) {
+			case gT_Non:
+				break;
+			case gT_MG:
+				mg = true;
+				break;
+			case gT_CN:
+				cannon = true;
+				break;
+			case gT_MGCN:
+				mg = cannon = true;
+				break;
+			default:
+				break;
+		}
+	}
+	if (mg && cannon) {
+		return gt_MGCN;
+	} else if (mg) {
+		return gt_MG;
+	} else if (cannon) {
+		return gt_CN;
+	} else {
+		return gt_Non;
+	}
+	
+}
+
+void GameAirForce::cmdToGameUSE_AMMO(firingEntry fe, int gunType)
+{
+	cmdForm	form;
+
+	form.command = USE_AMMO;
+	form.playerID = ALL_PLAYERS;
+
+	switch (gunType) {
+		case gT_MG:
+			form.gunPower.gunPowerFFmg = 1;
+			form.gunPower.gunPowerFFcannon = 0;
+			break;
+		case gT_CN:
+			form.gunPower.gunPowerFFmg = 0;
+			form.gunPower.gunPowerFFcannon = 1;
+			break;
+		case gT_MGCN:
+			form.gunPower.gunPowerFFmg = 1;
+			form.gunPower.gunPowerFFcannon = 1;
+			break;
+		case gT_Non:
+		default:
+			form.gunPower.gunPowerFFmg = 0;
+			form.gunPower.gunPowerFFcannon = 0;
+			break;
+
+	}
+	cmdToGame(USE_AMMO, form, NULL);
+}
+
+void GameAirForce::reflectFireToA(firingEntry fe)
+{
+	int	gunType;
+
+	gunType = getGunTypeFromFE(fe);
+	cmdToGameUSE_AMMO(fe, gunType);
+}
+
+void GameAirForce::reflectFiresToAs()
+{
+	list<std::shared_ptr<firingEntry>>::iterator itrFiringEnt;
+	firingEntry	fe;
+	static int	i = 0;
+
+	for (itrFiringEnt = m_firingEntries.begin(); 
+  	     itrFiringEnt != m_firingEntries.end(); 
+	     itrFiringEnt++) {
+		if ((*itrFiringEnt)->gameTurn == m_gameTurn) {
+			fe = **itrFiringEnt;
+			reflectFireToA(fe);
+		}
+	}
 }
 
 void GameAirForce::onExitGameModeFire()
 {
 	resolveFires();
+	reflectFiresToAs();
 }
 
 void GameAirForce::OnButtonProceed()
