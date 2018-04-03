@@ -175,6 +175,16 @@ enum CommandToX {
 	MODIFY_DAMAGE		= 19,
 };
 
+enum attackSide {
+	UNDEF = -1,
+	LEFT = 1,
+	RIGHT = 2,
+	FORWARD = 3,
+	BACK = 4,
+	ABOVE = 5,
+	BELOW = 6,
+};
+
 #define SELECTED_PLAYER -1
 #define ALL_PLAYERS	-2
 

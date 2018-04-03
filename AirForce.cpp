@@ -1563,6 +1563,7 @@ void PlayerAirForce::cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn)
 					= aircraftModels[(*itr)->mAircraftModel].silhouette;
 				p_rtn[i].fireAccuracy 
 					= aircraftModels[(*itr)->mAircraftModel].fireAccuracy;
+				p_rtn[i].damage = (*itr)->m_damage;
 				i++;
 			}
 		}
@@ -1700,6 +1701,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 					= aircraftModels[(*m_ItrSelectedAircraft)->mAircraftModel].silhouette;
 				p_rtn[i].fireAccuracy 
 					= aircraftModels[(*m_ItrSelectedAircraft)->mAircraftModel].fireAccuracy;
+				p_rtn[i].damage = (*m_ItrSelectedAircraft)->m_damage;
 				i++;
 				p_rtn[i].command = TAIL;
 				
@@ -1740,6 +1742,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 							= aircraftModels[(*itr)->mAircraftModel].silhouette;
 						p_rtn[i].fireAccuracy 
 							= aircraftModels[(*itr)->mAircraftModel].fireAccuracy;
+						p_rtn[i].damage = (*itr)->m_damage;
 	
 						i++;
 					}
@@ -7378,7 +7381,85 @@ void GameAirForce::reflectFiresToAs()
 	}
 }
 
-void GameAirForce::setFormDamageFormDamageChr(cmdForm *p_form, firingEntry fe, wchart_t chr)
+attackSide GameAirForce::getAttackSideLorR(firingEntry fe)
+{
+// return:
+// 	attackSide =LEFT or RIGHT
+// function:
+// 	check if attacker is on the left side of target or
+// 	right side.
+// 	if neither left nor right, die roll and decide left or right
+//
+	attackSide	side = UNDEF;
+	int acID_a = fe.acIDattacker;
+	int acID_t = fe.acIDtarget;
+	
+	cmdForm	formA[5];
+	cmdForm	formT[5];
+	cmdToGameGetAC_acID(formA, acID_a);
+	if (formA[0].command == TAIL) {
+		return side;
+	}
+	cmdToGameGetAC_acID(formT, acID_t);
+	if (formT[0].command == TAIL) {
+		return side;
+	}
+
+	int clockAtoT = getClock(formA[0], formT[0]);
+	int clockTtoA = getClock(formT[0], formA[0]);
+
+	if ((clockTtoA == 2) || (clockTtoA == 4)) {
+		side = RIGHT;
+	} else if ((clockTtoA == 8) || (clockTtoA = 10)) {
+		side = LEFT;
+	} else {
+		int	die = rollDice();
+		if (die %2 == 0) {
+			side = RIGHT;
+		}  else {
+			side = LEFT;
+		}
+	}	
+	return side;
+}
+	
+void GameAirForce::modifyFormDamageFromDamageChrC(cmdForm *p_form, firingEntry fe)
+{
+	int	dmg[2] = formT[0].damage.hit.cockpit; 
+	int	tol[2] = formT[0].damage.tolerance.cockpit;
+
+	attackSide	side = getAttackSideLorR(fe);
+	int	i;
+	
+	if (side == RIGHT) {
+		for (i = 1; i > -1; i--) {
+			if (tol[i] > 0) {
+				if (dmg[i] < tol[i]){
+					p_form->damage.hit.cockpit[i]++;
+					return;
+				}
+			}
+		}
+	} else if (side == LEFT) {
+		for (i = 0; i < 2; i++) {
+			if (tol[i] > 0) {
+				if (dmg[i] < tol[i]){
+					p_form->damage.hit.cockpit[i]++;
+					return;
+				}
+			}
+		}
+	} else {
+		MessageBox(NULL, 
+      			L"Error: modifyFormDamageFromDamageChrC:illegal priority.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}	
+
+}
+
+void GameAirForce::modifyFormDamageFromDamageChr(cmdForm *p_form, firingEntry fe, wchart_t chr)
 {
 	switch (chr) {
 		case L"W":
@@ -7388,6 +7469,7 @@ void GameAirForce::setFormDamageFormDamageChr(cmdForm *p_form, firingEntry fe, w
 			p_form->damage.hit.fuselage ++;
 			break;
 		case L"C":
+			modifyFormDamageFromDamageChrC(p_form, fe);
 			break;
 		case L"E":
 			break;
@@ -7426,7 +7508,7 @@ void GameAirForce::setFormDamageFormFE(cmdForm *p_form, firingEntry fe)
 	while ( ; IsNullOrEmpty(buf); ) {
 		p_ch = buf.Substring(0, 1)
 		buf = buf.Substring(1);
-		setFormDamageFromDamageChr(p_form, fe, ch);
+		modifyFormDamageFromDamageChr(p_form, fe, ch);
 	}
 }
 
