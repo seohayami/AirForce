@@ -96,6 +96,8 @@ struct aircraftModel
 	                                // Med 2, 4, 6, 8, 10, 12 o'clock
 					// Hih 2, 4, 6, 8, 10, 12 o'clock
 					// above, below, na, na, na, na
+	int		silhouette;
+	int		fireAccuracy;
 };
 
 
@@ -163,7 +165,11 @@ enum CommandToX {
 	APPEND_MANUV		= 10,
 	DELETE_MANUV		= 11,
 	SET_PLAYER_SELECTED	= 12,
-	GET_FIRE_RANGE		= 13
+	GET_FIRE_RANGE		= 13,
+	APPEND_FIRING		= 14,
+	DELETE_FIRING		= 15,
+	GET_FIRINGS		= 16,
+	GET_ACID		= 17,
 };
 
 #define SELECTED_PLAYER -1
@@ -239,17 +245,6 @@ struct maneuverable {
 	bool	destroyed;
 };
 
-struct firingArcRange {
-	int	rangeFFmg;
-	int	rangeFFcannon;
-	bool	rangeSameHexFF;
-	int	rangeFH;
-	bool	rangeSameHexFH;
-	int	rangeFL;
-	bool	rangeSameHexFL;
-	int	rangeF[8]; 	// 2, 4, 6, 8, 10, 12Å@o'clock, above, below
-};
-
 struct gunPower {
 	int	gunPowerFFmg;
 	int	gunPowerFFcannon;
@@ -261,26 +256,42 @@ struct gunPower {
 					// above, low, na, na, na, na
 };
 
+struct firingArcRange {
+	int		rangeFFmg;
+	int		rangeFFcannon;
+	bool		rangeSameHexFF;
+	int		rangeFH;
+	bool		rangeSameHexFH;
+	int		rangeFL;
+	bool		rangeSameHexFL;
+	int		rangeF[8]; 	// 2, 4, 6, 8, 10, 12Å@o'clock, above, below
+	gunPower	gunFactor;
+};
+
 struct hitResult {
-	int	wing;
-	int	fuselage;
-	int	cockpit;
-	int	engine;
-	int	gun;
-	int	fuel;
+	int		wing;
+	int		fuselage;
+	int		cockpit;
+	int		engine;
+	int		gun;
+	int		fuel;
+	int		die;
 };
 
 struct firingEntry {
-	int	attackerACID;
-	int	targetACID;
-	int	gunType;	// 1: ffMg
-				// 2: ffCanon
-				// 3: ffMg+Cannon
-				// 4: FH
-				// 5: FL
-				// 6: F
-	int	dieRoll;
-	hitResult	result;
+	int		gameTurn;
+	int		acIDattacker;
+	int		acIDtarget;
+	firingArcRange	weapon;
+	int		distanceH;	// horizontal distance in hex
+	int		distanceV;	// vertical distance in hex(per 500ft)
+	int		modifierA;	// modifier attacker
+	int		modifierT;	// modifier target
+	int		modifierD;	// modifier deflection
+	int		modifierP;	// modifier attacker pilot
+	int		attenuation;
+	int		dieRoll;
+	wchar_t		result[32];
 };
 
 struct cmdForm {
@@ -296,6 +307,7 @@ struct cmdForm {
 	int		virCorY;
 	float		heading;
 	int		speed;
+	spdIncTblEntry	speedCat;	//STAL,DIVE,LEVL,MANV,NA
 	float		alt;
 	int		bank;
 	int		nose;
@@ -309,7 +321,9 @@ struct cmdForm {
 	struct		damage;
 	firingArcRange	firingRange;
 	gunPower	gunPower;
-	firingEntry	firingEntry;
+	firingEntry	firingEnt;
+	int		silhouette;
+	int		fireAccuracy;
 };
 
 struct damage {
@@ -332,12 +346,6 @@ struct expandHistory {
 // but cannot compile.
 // i dont know why.   2018/02/20
 
-
-///////////////////////////////////////////////////////////////////////////
-//
-//	MapAirForce.h
-//
-///////////////////////////////////////////////////////////////////////////
 
 LPCTSTR listStrHeading[]
 	= {
@@ -412,6 +420,12 @@ LPCTSTR listStrNose[]
 		L"Nose Down"
 	};
 
+///////////////////////////////////////////////////////////////////////////
+// 
+// 	MapAirForce.h
+//
+///////////////////////////////////////////////////////////////////////////
+
 class MapAirForce : public MainWindow {
 protected:
 
@@ -453,6 +467,10 @@ protected:
 	MapStat			m_mapStat;
 	firingArcRange		m_selectedFireArc;
 
+	// for inFireArcCheck
+	bool			m_inFireArc;
+	int			m_virCorX_target, m_virCorY_target;
+
   //------------------- protected member functions ---------------------
 	void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv);
 	void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv);
@@ -489,12 +507,17 @@ protected:
 	void parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading);
 	void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef);
 	int parseManuv(cmdForm *p_form);
+	int getDistanceHex(cmdForm formS, cmdForm fromD);
+	int getClock(cmdForm formS, cmdForm formD);
 
   	D2D1_POINT_2F	virCorToCenterF(int virCorX, int virCorY);
 	void	NumerateStackNum(cmdForm *p_rtn);
 	void 	DrawLeaderLine(D2D1_POINT_2F center, cmdForm *p_form);
 	void 	DrawManuvPath(cmdForm form);
 	HRESULT PaintHex(int virCorX, int virCorY);
+	HRESULT drawArrowHexToHex(
+		int virCorXsource, int virCorYsource,
+		int virCorXdest, int virCorYdest);
 	HRESULT DrawPiece(
 //		ID2D1RenderTarget *p_renderTgt,
 //		ID2D1SolidColorBrush *pBrush,
@@ -518,6 +541,8 @@ protected:
 	void 	paintFireArcClockRef(cmdForm form, int clockRef, int range);
 	void 	paintFireArc(cmdForm form);
 	void 	OnPaintGM_Fire();
+	void 	drawFiring(cmdForm form);
+	void 	drawFirings();
 	void 	OnPaint();
 	HRESULT CreateDWriteTextFormat();
 	void HandleDlgDeploySetAcstat(HWND hDlgWnd);
@@ -540,6 +565,19 @@ protected:
 	void 	OnRButtonDown(int pixelX, int pixelY, DWORD flags);
 	void 	OnLButtonDoubleClicks(int pixelX, int pixelY, DWORD flags);
 	int 	selectTarget(int pixelX, int pixelY, DWORD flags);
+	void 	cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
+	void 	cmdToGameGetAC_selected(cmdForm *p_cmdForm);
+	int 	getFireModifierA(cmdForm formA);
+	int 	getFireModifierT(cmdForm formT);
+	int 	getFireModifierD(cmdForm formA, cmdForm formT);
+	int 	getFireModifierP(cmdForm formA);
+	void 	deleteUnusedGunFactorFExcpH(firingEntry *fe, int clock);
+	void 	deleteUnusedGunFactorFExcpL(firingEntry *fe, int clock);
+	void 	deleteUnusedGunFactorFExcpM(firingEntry *fe, int clock);
+	void 	deleteUnusedGunFactorFExcpA(firingEntry *fe, int clock);
+	void 	deleteUnusedGunFactorFExcpB(firingEntry *fe, int clock);
+	void 	deleteUnusedGunFactorF(firingEntry *p_fe, cmdForm formA, cmdForm formT);
+	void 	cmdToGameAppendFiring(int acIDtarget);
 	void 	OnLButtonUp(int pixelX, int pixelY, DWORD flags);
 	int 	getManuvMenuSelItemClimb(int selID, cmdForm *p_formRtnGetManuvable);
 	int 	getManuvMenuSelItemDive(int selID, cmdForm *p_formRtnGetManuvable);
@@ -835,6 +873,12 @@ protected:
 		list<std::shared_ptr<Aircraft>>::iterator itr);
 	void cmdToPlayerGetFireRanges(cmdForm form, cmdForm *p_rtn);
 	void cmdToPlayerDispatch(int cmd, cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn);
+	BOOL cmdToPlayerGetACID(
+		cmdForm form, 
+		cmdForm *p_rtn, 
+		list<std::shared_ptr<Aircraft>>::iterator itr);
+	void cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn);
 
 public:
   //------------------- public member variables ---------------------
@@ -873,11 +917,12 @@ protected:
 	list<shared_ptr<MapAirForce>> mMaps;
 	list<shared_ptr<PlayerAirForce>>::iterator mItrPlayers;
 	list<shared_ptr<PlayerAirForce>> mPlayers;
+	list<shared_ptr<firingEntry>> m_firingEntries;
 	static int	mNewPlayerID;
 	regStat		mNewPlayerRegStat;
 	static int aircraftID[MAX_AIRCRAFTMODELNUMBER];
-	list<shared_ptr<firingEntry>>::iterator m_firingEntries;
 	int			m_gameTurn;
+	HWND m_hwndLV_FiringTable;
 
   //------------------- protected member functions ---------------------
   	HRESULT CreateDWriteTextFormat();
@@ -890,10 +935,41 @@ protected:
 					  	WPARAM wParam,
 				  	  	LPARAM lParam);
 	void cmdGetDispatched(cmdForm *p_rtnForms);
-	void GameAirForce::addPlayerAndCraftIfNeeded(int acmIndex, int pmIndex, wchar_t *name);
+	BOOL calculateFiringEnt(cmdForm *p_form);
+	void cmdAppendFiring(cmdForm form);
+	void cmdGetFirings(cmdForm form, cmdForm *p_rtnForms);
+	void addPlayerAndCraftIfNeeded(int acmIndex, int pmIndex, wchar_t *name);
 	void OnPaint();
+	int referHitTableWing(int column, int die);
+	int referHitTableFuselage(int column, int die);
+	int referHitTableCockpit(int column, int die);
+	int referHitTableEngine(int column, int die);
+	int referHitTableGun(int column, int die);
+	int referHitTableFuel(int column, int die);
+	void referHitTable(int column, BOOL concentrate, hitResult *p_hr);
+	hitResult resolveFire(int index);
+	void makeHitTblStr(hitResult hr, wchar_t *a_str);
+	void setFireTableResult(int index, hitResult hr);
+	void resolveFires();
+	void onExitGameModeFire();
 	void OnButtonProceed();
-	void GameAirForce::OnEditNewMapDialog();
+	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
+	int  insertFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index);
+	BOOL setFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index);
+	void insertFormTargetFiringTable(HWND hwndListView, cmdForm *p_form, int index);
+	BOOL setFormTargetFiringTable(HWND hwndListView, cmdForm *p_form, int index);
+	BOOL setGunFactorToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
+	BOOL setDistanceToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
+	BOOL setAttenuationToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
+	BOOL setModifierToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
+	void insertFiringEntFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
+	void setFiringEntFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
+	void insertItemsFiringTable(HWND hwndListView);
+	void insertColumnsFiringTable(HWND hwndListView);
+	HWND createFiringTable();
+	void handleWM_NOTIFY_FiringTable(LPARAM lParam);
+	void handleWM_NOTIFY(LPARAM lParam);
+	void OnEditNewMapDialog();
 public:
   //------------------- public member variables ---------------------
 	GameMode m_gameMode;
