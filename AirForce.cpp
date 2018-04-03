@@ -168,10 +168,6 @@ void DrawArrowHead(ID2D1RenderTarget *p_renderTarget,
 	D2D1_POINT_2F headTailLeftPt;
 	D2D1_POINT_2F headTailRihtPt;
 
-	angle = angle * (-1.0f);
-	// because Windows' Y-axis system is inverted from ususal Math system
-	// you need to negate the angle degree.
-
 	defHeadTailLeftPt.x = (-1.0f) * headLength * cos(angle_head * pi / 180.0f);
 	defHeadTailLeftPt.y = (-1.0f) * headLength * sin(angle_head * pi / 180.0f);
 	defHeadTailRihtPt.x = (-1.0f) * headLength * cos(angle_head * pi / 180.0f);
@@ -210,6 +206,15 @@ void DrawArrow(ID2D1RenderTarget *p_renderTarget,
 
 	float angleRadian;
 		angleRadian = acos( InnerProduct2D(unitVector, v));
+// PITFALL: 2018/04/02
+// this if statement is necessary because
+// equation to get angle "acos(innerproduct(vector1, vector2))" gives 
+// absolute value of the angle.
+// it does not give negative angle.  
+		if (v.y < 0) {
+			angleRadian = angleRadian * (-1.0f);
+		} else {
+		}
 
 	p_renderTarget->DrawLine(tailPt, headPt, p_brush, width);
 	DrawArrowHead(p_renderTarget,
@@ -219,6 +224,11 @@ void DrawArrow(ID2D1RenderTarget *p_renderTarget,
 			width,
 			15.0f,
 			angleRadian / pi * 180.0f);
+}
+
+int rollDice()
+{
+	return rand() % 6 +1;
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -1521,6 +1531,94 @@ void PlayerAirForce::cmdToPlayerDispatch(int cmd, cmdForm form, cmdForm *p_rtn)
 	}
 }
 
+void PlayerAirForce::cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn)
+{
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+	int i = 0;
+
+	if (form.command == GET_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.selectedAircraft) {
+				p_rtn[i].command = GET_AC;
+				p_rtn[i].playerID = mPlayerID;
+				p_rtn[i].aircraftModel = (*itr)->mAircraftModel;
+				p_rtn[i].pilotModel = (*itr)->mPilotModel;
+				p_rtn[i].aircraftID = (*itr)->m_id;
+//				Syntax:  wcscpy(p_destination, p_source)
+				wcscpy(p_rtn[i].aircraftName, (*itr)->mAircraftName);
+				p_rtn[i].acStatus = (*itr)->m_stat;
+				p_rtn[i].virCorX = (*itr)->m_virCorX;
+				p_rtn[i].virCorY = (*itr)->m_virCorY;
+				p_rtn[i].heading = (*itr)->m_heading;
+				p_rtn[i].speed = (*itr)->m_speed;
+				p_rtn[i].speedCat = (*itr)->ReferSpeedIncTbl();
+				p_rtn[i].alt = (*itr)->m_alt;
+				p_rtn[i].bank = (*itr)->m_bank;
+				p_rtn[i].nose = (*itr)->m_nose;
+				int j;
+				for (j = 0; j < 80; j++) {
+					p_rtn[i].manuv[j] = (*itr)->m_manuv[j];
+				}
+				p_rtn[i].silhouette 
+					= aircraftModels[(*itr)->mAircraftModel].silhouette;
+				p_rtn[i].fireAccuracy 
+					= aircraftModels[(*itr)->mAircraftModel].fireAccuracy;
+				i++;
+			}
+		}
+		p_rtn[i].command = TAIL;
+	}
+}
+
+BOOL PlayerAirForce::cmdToPlayerGetACID(
+	cmdForm form, 
+	cmdForm *p_rtn, 
+	list<std::shared_ptr<Aircraft>>::iterator itr)
+{
+// function:				18/04/02
+//	p_rtn->selectedAircraft = acid which matches the condition
+//	such as match of form.aircraftName and *itr->mAircraftName
+// return: 
+//	ture if the player has the aircraft which matches the condition
+//	false otherwise
+
+	BOOL	hit = false;
+
+	if (wcscmp(form.aircraftName, (*itr)->mAircraftName) == 0) {
+		hit = true;
+	}
+
+	if (hit) {
+		p_rtn->command = GET_ACID;
+		p_rtn->selectedAircraft = (*itr)->m_id;
+	} 
+
+	return hit;
+}
+
+void PlayerAirForce::cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn)
+{
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+	int i = 0;
+	BOOL	hit = false;
+
+	if (form.selectedAircraft == SELECTED_AC) {
+		hit = cmdToPlayerGetACID(form, p_rtn, m_ItrSelectedAircraft);
+		if (hit) {
+			i++;
+		}
+		p_rtn[i].command = TAIL;
+	} else if (form.selectedAircraft == ALL_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			hit = cmdToPlayerGetACID(form, &(p_rtn[i]), itr);
+			if (hit) {
+				i++;
+			}
+		}
+		p_rtn[i].command = TAIL;
+	}
+}
+
 void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 {
 
@@ -1578,6 +1676,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 				p_rtn[i].virCorY = (*m_ItrSelectedAircraft)->m_virCorY;
 				p_rtn[i].heading = (*m_ItrSelectedAircraft)->m_heading;
 				p_rtn[i].speed = (*m_ItrSelectedAircraft)->m_speed;
+				p_rtn[i].speedCat = (*m_ItrSelectedAircraft)->ReferSpeedIncTbl();
 				p_rtn[i].alt = (*m_ItrSelectedAircraft)->m_alt;
 				p_rtn[i].bank = (*m_ItrSelectedAircraft)->m_bank;
 				p_rtn[i].nose = (*m_ItrSelectedAircraft)->m_nose;
@@ -1585,6 +1684,10 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 				for (j = 0; j < 80; j++) {
 					p_rtn[i].manuv[j] = (*m_ItrSelectedAircraft)->m_manuv[j];
 				}
+				p_rtn[i].silhouette 
+					= aircraftModels[(*m_ItrSelectedAircraft)->mAircraftModel].silhouette;
+				p_rtn[i].fireAccuracy 
+					= aircraftModels[(*m_ItrSelectedAircraft)->mAircraftModel].fireAccuracy;
 				i++;
 				p_rtn[i].command = TAIL;
 				
@@ -1613,6 +1716,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 						p_rtn[i].virCorY = (*itr)->m_virCorY;
 						p_rtn[i].heading = (*itr)->m_heading;
 						p_rtn[i].speed = (*itr)->m_speed;
+						p_rtn[i].speedCat = (*itr)->ReferSpeedIncTbl();
 						p_rtn[i].alt = (*itr)->m_alt;
 						p_rtn[i].bank = (*itr)->m_bank;
 						p_rtn[i].nose = (*itr)->m_nose;
@@ -1620,12 +1724,17 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 						for (j = 0; j < 80; j++) {
 							p_rtn[i].manuv[j] = (*itr)->m_manuv[j];
 						}
+						p_rtn[i].silhouette 
+							= aircraftModels[(*itr)->mAircraftModel].silhouette;
+						p_rtn[i].fireAccuracy 
+							= aircraftModels[(*itr)->mAircraftModel].fireAccuracy;
 	
 						i++;
 					}
 				}
 				p_rtn[i].command = TAIL;
 			} else {
+				cmdToPlayerGetAcAcID(form, p_rtn);
 			}
 			break;
 
@@ -1685,6 +1794,11 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 		case GET_FIRE_RANGE:
 			cmdToPlayerGetFireRanges(form, p_rtn);
+			break;
+		case GET_ACID:
+			cmdToPlayerGetACIDs(form, p_rtn);
+			break;
+		default:
 			break;
 	}
 }
@@ -2537,6 +2651,100 @@ int MapAirForce::parseManuv(cmdForm *p_form)
 	return mp;
 }
 
+int MapAirForce::getDistanceHex(cmdForm formS, cmdForm formD)
+{
+	int deltaX = abs(formS.virCorX - formD.virCorX);
+	int deltaY = abs(formS.virCorY - formD.virCorY);
+	int distT = deltaX + deltaY;
+	cmdForm formT[6];
+	int step = 0;
+	int i;
+
+	while (distT != 0) {
+		for (i = 0; i < 6; i++) {
+			formT[i] = formS;
+			parseManuvMoveOneHexSpecifiedDirection(&formT[i], i * 60);
+			deltaX = abs(formT[i].virCorX - formD.virCorX);
+			deltaY = abs(formT[i].virCorY - formD.virCorY);
+			if (distT > deltaX + deltaY) {
+				formS = formT[i];
+				distT = deltaX + deltaY;
+				step++;
+			}
+		}
+	}
+	return step;
+}
+
+int MapAirForce::getClock(cmdForm formS, cmdForm formD)
+{
+// return 	2, 4, 6, 8, 10, 12 oclock
+// 		14 if above
+//		16 if below
+//		18 if same hex, same alt (collision)
+//		-1 if error
+//
+	int deltaX = abs(formS.virCorX - formD.virCorX);
+	int deltaY = abs(formS.virCorY - formD.virCorY);
+	int distT = deltaX + deltaY;
+	cmdForm formT[6];
+	int step = 0;
+	int i;
+	int clockCnt[6] = {0, 0, 0, 0, 0, 0};	//2, 4, 6, 8, 10, 12 oclock
+	int max = 0;
+	int clock;
+
+	if (deltaX == 0 && deltaY == 0) {
+		if (formS.alt > formD.alt) {
+			return 14;
+		} else if (formS.alt < formD.alt) {
+			return 16;
+		} else {
+			return 18;
+		}
+	}
+
+	while (distT != 0) {
+		for (i = 0; i < 6; i++) {
+			formT[i] = formS;
+			parseManuvMoveOneHexClockRef(&formT[i], (i + 1) * 2);
+			deltaX = abs(formT[i].virCorX - formD.virCorX);
+			deltaY = abs(formT[i].virCorY - formD.virCorY);
+			if (distT > deltaX + deltaY) {
+				formS = formT[i];
+				distT = deltaX + deltaY;
+				step++;
+				clockCnt[i]++;
+			}
+		}
+	}
+
+	for (i = 0; i < 6; i++) {
+		if (clockCnt[i] > max) {
+			max = clockCnt[i];
+		}
+	}
+	if (clockCnt[5] == max) {
+		return 12;
+	} else if (clockCnt[2] == max) {
+		return 6;
+	} else if (clockCnt[0] == max) {
+		return 2;
+	} else if (clockCnt[4] == max) {
+		return 10;
+	} else if (clockCnt[1] == max) {
+		return 4;
+	} else if (clockCnt[3] == max) {
+		return 8;
+	} else {
+		MessageBox(NULL, 
+	           L"ERROR: getClock: internal error ..\n",
+		   NULL,
+		   MB_OKCANCEL | MB_ICONSTOP
+		   );
+		return -1;
+	}
+}
 
 HRESULT MapAirForce::LoadResourceBitmap(
 		ID2D1RenderTarget *pRenderTarget,
@@ -2913,6 +3121,45 @@ HRESULT MapAirForce::PaintHex(int virCorX, int virCorY)
 	return hr;
 }
 
+HRESULT MapAirForce::drawArrowHexToHex(
+		int virCorXsource, int virCorYsource,
+		int virCorXdest, int virCorYdest)
+{
+	const int unitA = mHexSize;
+	FLOAT	alpha;
+
+	alpha = unitA * 2 
+		/ sqrt(pow(virCorXsource - virCorXdest, 2.0f) 
+		     + pow(virCorYsource - virCorYdest, 2.0f)
+		     );
+	FLOAT deltaX, deltaY;
+
+	deltaX = (virCorXsource - virCorXdest) * alpha;
+	deltaY = (virCorYsource - virCorYdest) * alpha;
+
+	D2D1_POINT_2F centerSource, centerDest;
+	HRESULT hr = S_OK;
+
+	centerSource = virCorToCenterF(virCorXsource, virCorYsource);
+	centerDest = virCorToCenterF(virCorXdest, virCorYdest);
+	centerDest.x += deltaX;
+	centerDest.y += deltaY;
+
+	D2D1_COLOR_F originalColor = pBrush->GetColor();
+	pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Pink, 1.f));
+
+	DrawArrow(pRenderTarget,
+		pBrush,
+		centerSource,
+		centerDest,
+		10.0f,
+		3.0f);
+
+	pBrush->SetColor(originalColor);
+
+	return hr;
+}
+
 HRESULT MapAirForce::DrawPiece(
 //		ID2D1RenderTarget *p_renderTgt,
 //		ID2D1SolidColorBrush *pBrush,
@@ -3165,6 +3412,10 @@ void MapAirForce::paintAndExpand(
 			if (history.centerCnt - history.leftCnt >= 1) {
 				parseManuvMoveOneHexClockRef(&formLeft, (clockRef + 10) % 12);
 				PaintHex(formLeft.virCorX, formLeft.virCorY);
+				if ((formLeft.virCorX == m_virCorX_target)
+				&&  (formLeft.virCorY == m_virCorY_target)) {
+					m_inFireArc = true;
+				}
 				historyLeft.leftCnt ++;
 				paintAndExpand
 					(formLeft,
@@ -3178,6 +3429,10 @@ void MapAirForce::paintAndExpand(
 			if (history.centerCnt - history.leftCnt >= 2) {
 				parseManuvMoveOneHexClockRef(&formLeft, (clockRef + 10) % 12);
 				PaintHex(formLeft.virCorX, formLeft.virCorY);
+				if ((formLeft.virCorX == m_virCorX_target)
+				&&  (formLeft.virCorY == m_virCorY_target)) {
+					m_inFireArc = true;
+				}
 				historyLeft.leftCnt ++;
 				paintAndExpand
 					(formLeft,
@@ -3192,6 +3447,10 @@ void MapAirForce::paintAndExpand(
 			if (history.centerCnt - history.rightCnt >= 1) {
 				parseManuvMoveOneHexClockRef(&formRight, (clockRef + 2) % 12);
 				PaintHex(formRight.virCorX, formRight.virCorY);
+				if ((formRight.virCorX == m_virCorX_target)
+				&&  (formRight.virCorY == m_virCorY_target)) {
+					m_inFireArc = true;
+				}
 				historyRight.rightCnt ++;
 				paintAndExpand
 					(formRight,
@@ -3205,6 +3464,10 @@ void MapAirForce::paintAndExpand(
 			if (history.centerCnt - history.rightCnt >= 2) {
 				parseManuvMoveOneHexClockRef(&formRight, (clockRef + 2) % 12);
 				PaintHex(formRight.virCorX, formRight.virCorY);
+				if ((formRight.virCorX == m_virCorX_target)
+				&&  (formRight.virCorY == m_virCorY_target)) {
+					m_inFireArc = true;
+				}
 				historyRight.rightCnt ++;
 				paintAndExpand
 					(formRight,
@@ -3216,6 +3479,10 @@ void MapAirForce::paintAndExpand(
 			}
 		}
 		parseManuvMoveOneHexClockRef(&formCenter, (clockRef + 12) % 12);
+		if ((formCenter.virCorX == m_virCorX_target)
+		&&  (formCenter.virCorY == m_virCorY_target)) {
+			m_inFireArc = true;
+		}
 		PaintHex(formCenter.virCorX, formCenter.virCorY);
 		historyCenter.centerCnt ++;
 		paintAndExpand
@@ -3313,6 +3580,48 @@ void MapAirForce::OnPaintGM_Fire()
 	}
 	if (rtn[0].command != TAIL) {
 		paintFireArc(rtn[0]);
+	}
+}
+
+void MapAirForce::drawFiring(cmdForm form)
+{
+	int acID_a = form.firingEnt.acIDattacker;
+	int acID_t = form.firingEnt.acIDtarget;
+	
+	cmdForm	formA[5];
+	cmdForm	formT[5];
+	cmdToGameGetAC_acID(formA, acID_a);
+	cmdToGameGetAC_acID(formT, acID_t);
+
+	if (formA[0].command == TAIL) {
+		return;
+	}
+	if (formT[0].command == TAIL) {
+		return;
+	}
+	drawArrowHexToHex(formA[0].virCorX,
+			  formA[0].virCorY,
+			  formT[0].virCorX,
+			  formT[0].virCorY);
+}
+
+
+void MapAirForce::drawFirings()
+{
+	cmdForm	rtn[20];
+	cmdForm form;
+	form.command = GET_FIRINGS;
+	form.selectedAircraft = ALL_AC;
+
+	if (mp_ownerGame) {
+		((GameAirForce*)mp_ownerGame)->cmdToGame(GET_FIRINGS, form, rtn);
+	}
+
+	int	i;
+	for (i = 0;
+	     rtn[i].command != TAIL;
+	     i++) {
+		drawFiring(rtn[i]);
 	}
 }
 
@@ -3563,6 +3872,7 @@ void MapAirForce::OnPaint()
 
 
 //	OnPaintBitmap();
+	drawFirings();
 	hr = DrawPieces(
 		pRenderTarget,
 		pBrush,
@@ -4265,9 +4575,6 @@ int MapAirForce::SelectGun(int pixelX, int pixelY, DWORD flags, cmdForm *p_form)
 }
 void MapAirForce::setSelectedFireArc(cmdForm *p_form, int selectedGun)
 {
-// Function: set MapAirForce::m_selectedFireArc 
-// 		m_selectedFireArc.range(selectedGun) is set to positive number.
-// 		m_selectedFireArc.range(other than selectedGun) is set to -1.
 // selectedGun
 // 	=1: FFmg
 //	=2: FFcannon
@@ -4276,7 +4583,7 @@ void MapAirForce::setSelectedFireArc(cmdForm *p_form, int selectedGun)
 //	=5: FL
 //	=6: F
 
-	int i;
+	int i, j;
 
 	m_selectedFireArc.rangeFFmg = -1;
 	m_selectedFireArc.rangeFFcannon = -1;
@@ -4287,27 +4594,49 @@ void MapAirForce::setSelectedFireArc(cmdForm *p_form, int selectedGun)
 	for (i = 0; i < 8; i++) {
 		m_selectedFireArc.rangeF[i] = -1;
 	}
+	m_selectedFireArc.gunFactor.gunPowerFFmg = 0;
+	m_selectedFireArc.gunFactor.gunPowerFFcannon = 0;
+	m_selectedFireArc.gunFactor.gunPowerFH = 0;
+	m_selectedFireArc.gunFactor.gunPowerFL = 0;
+	for (i = 0; i < 4; i++) {
+		for (j = 0; j < 6; j++) {
+			m_selectedFireArc.gunFactor.gunPowerF[i][j] = 0;
+
+		}
+	}
 
 	switch (selectedGun) {
 		case 1: 	//FFmg
 			m_selectedFireArc.rangeFFmg = p_form->firingRange.rangeFFmg;
+			m_selectedFireArc.gunFactor.gunPowerFFmg = p_form->gunPower.gunPowerFFmg;
 			break;
 		case 2:		//FFcannon
 			m_selectedFireArc.rangeFFcannon = p_form->firingRange.rangeFFcannon;
+			m_selectedFireArc.gunFactor.gunPowerFFcannon = p_form->gunPower.gunPowerFFcannon;
 			break;
 		case 3:		//FFmg+cannon
 			m_selectedFireArc.rangeFFmg = p_form->firingRange.rangeFFmg;
 			m_selectedFireArc.rangeFFcannon = p_form->firingRange.rangeFFcannon;
+			m_selectedFireArc.gunFactor.gunPowerFFmg = p_form->gunPower.gunPowerFFmg;
+			m_selectedFireArc.gunFactor.gunPowerFFcannon = p_form->gunPower.gunPowerFFcannon;
 			break;
 		case 4:		//FH
 			m_selectedFireArc.rangeFH = p_form->firingRange.rangeFH;
+			m_selectedFireArc.gunFactor.gunPowerFH = p_form->gunPower.gunPowerFH;
 			break;
 		case 5: 	//FL
 			m_selectedFireArc.rangeFL = p_form->firingRange.rangeFL;
+			m_selectedFireArc.gunFactor.gunPowerFL = p_form->gunPower.gunPowerFL;
 			break;
 		case 6: 	//F
 			for (i = 0; i < 8; i++) {
 				m_selectedFireArc.rangeF[i] = p_form->firingRange.rangeF[i];
+			}
+			for (i = 0; i < 4; i++) {
+				for (j = 0; j < 6; j++) {
+					m_selectedFireArc.gunFactor.gunPowerF[i][j] 
+						= p_form->gunPower.gunPowerF[i][j];
+				}
 			}
 			break;
 	}
@@ -4506,6 +4835,22 @@ int MapAirForce::selectTarget(int pixelX, int pixelY, DWORD flags)
 	cmdForm rtn[20];
 	((GameAirForce*)mp_ownerGame)->cmdToGame(GET_HIT, form, rtn);
 
+	cmdForm form_attacker[20];
+	m_inFireArc = false;
+	m_virCorX_target = result.virCorX;
+	m_virCorY_target = result.virCorY;
+	cmdToGameGetAC_selected(form_attacker);
+	paintFireArc(form_attacker[0]);
+	if (! m_inFireArc) {
+		MessageBox(NULL, 
+      			L"Error: target aircraft out of range.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return -1;
+	}
+
+
 	int id = 0;
 	int stackNum = 0;
 	for (id = 0; rtn[id].command != TAIL; id++) {
@@ -4535,6 +4880,328 @@ int MapAirForce::selectTarget(int pixelX, int pixelY, DWORD flags)
 		InvalidateRect(m_hwnd, NULL, FALSE);
 	}
 	return acID;
+}
+
+void MapAirForce::cmdToGameGetAC_selected(cmdForm *p_cmdForm)
+{
+	cmdForm form;
+	form.command = GET_AC;
+	form.playerID = SELECTED_PLAYER;
+	form.selectedAircraft = SELECTED_AC;
+
+	if (mp_ownerGame) {
+		((GameAirForce*)mp_ownerGame)->cmdToGame(GET_AC, form, p_cmdForm);
+	}
+}
+
+void MapAirForce::cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID)
+{
+	cmdForm form;
+	form.command = GET_AC;
+	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = acID;
+
+	if (mp_ownerGame) {
+		((GameAirForce*)mp_ownerGame)->cmdToGame(GET_AC, form, p_cmdForm);
+	}
+}
+
+int MapAirForce::getFireModifierA(cmdForm formA)
+{
+	int 	modifier = 0;
+	int	i;
+
+	switch (formA.speedCat) {
+		case STAL:
+			modifier -= 4;
+			break;
+		case DIVE:
+			modifier -= 1;
+			break;
+		default:
+			break;
+	}
+	
+	for (i = 0; formA.manuv[i] != MANUV_EN; i++) {
+		switch (formA.manuv[i]) {
+			case MANUV_SL:
+			case MANUV_SR:
+			case MANUV_LC:
+			case MANUV_LD:
+			case MANUV_RL:
+			case MANUV_RR:
+				modifier -= 2;
+				break;
+			default:
+				break;
+		}
+	}
+
+	switch (formA.bank) {
+		case BANK_IR:
+		case BANK_IL:
+		case BANK_IV:
+			modifier -= 3;
+			break;
+		default:
+			break;
+	}
+
+	if (  (m_selectedFireArc.rangeFFmg > 0) 
+	   || (m_selectedFireArc.rangeFFcannon > 0) 
+	   || (m_selectedFireArc.rangeFH > 0) 
+	   || (m_selectedFireArc.rangeFL > 0) ) {
+		modifier += formA.fireAccuracy;
+	}
+
+	return modifier;
+}
+
+int MapAirForce::getFireModifierT(cmdForm formT)
+{
+	int 	modifier = 0;
+	int	i;
+
+	modifier += formT.silhouette;
+
+	if (formT.speed >= 8) {
+		modifier -= 1;
+	}
+
+	for (i = 0; formT.manuv[i] != MANUV_EN; i++) {
+		switch (formT.manuv[i]) {
+			case MANUV_SL:
+			case MANUV_SR:
+				modifier -= 1;
+				break;
+			default:
+				break;
+		}
+	}
+
+	return modifier;
+}
+
+int MapAirForce::getFireModifierD(cmdForm formA, cmdForm formT)
+{
+	int 	modifier = 0;
+	int 	clockAtoT, clockTtoA;
+	int	diff;
+
+	clockAtoT = getClock(formA, formT);
+	clockTtoA = getClock(formT, formA);
+
+	diff = abs(clockAtoT - clockTtoA);
+
+	if (clockAtoT == 14) {	// above
+		modifier += 2;
+	} else if (clockAtoT == 16) {	//below
+		modifier += 1;
+	} else if (clockAtoT == 18) { 	//collision
+		MessageBox(NULL, 
+	           L"ERROR: getFireMofierD::Collision ..\n",
+		   NULL,
+		   MB_OKCANCEL | MB_ICONSTOP
+		   );
+	} else {
+		if (diff == 0) {
+			if (clockAtoT == 0) {
+				modifier -= 4;
+			} else {
+				modifier -= 3;
+			}
+		} else if (diff == 2) {
+			modifier -= 2;
+		} else if (diff == 4) {
+			modifier -= 0;
+		} else if (diff == 6) {
+			modifier += 1;
+		}
+	}
+
+	return modifier;
+}
+
+int MapAirForce::getFireModifierP(cmdForm formA)
+{
+	int	modifier = 0;
+
+	modifier += pilotModels[formA.pilotModel].firing;
+
+	return modifier;
+}
+
+void MapAirForce::deleteUnusedGunFactorFExcpH(firingEntry *fe, int clock)
+{
+	int	i;
+
+	for (i = 0; i < 6; i++) {		// High
+		if (i == (clock -2) / 2) {
+		} else {
+			fe->weapon.gunFactor.gunPowerF[0][i] = 0;
+		}
+	}
+	for (i = 0; i < 6; i++) {		// Mid
+		fe->weapon.gunFactor.gunPowerF[1][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Low
+		fe->weapon.gunFactor.gunPowerF[2][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Above, Below
+		fe->weapon.gunFactor.gunPowerF[3][i] = 0;
+	}
+}
+
+void MapAirForce::deleteUnusedGunFactorFExcpL(firingEntry *fe, int clock)
+{
+	int	i;
+
+	for (i = 0; i < 6; i++) {		// High
+		fe->weapon.gunFactor.gunPowerF[0][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Mid
+		fe->weapon.gunFactor.gunPowerF[1][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Low
+		if (i == (clock -2) / 2) {
+		} else {
+			fe->weapon.gunFactor.gunPowerF[2][i] = 0;
+		}
+	}
+	for (i = 0; i < 6; i++) {		// Above, Below
+		fe->weapon.gunFactor.gunPowerF[3][i] = 0;
+	}
+}
+
+void MapAirForce::deleteUnusedGunFactorFExcpM(firingEntry *fe, int clock)
+{
+	int	i;
+
+	for (i = 0; i < 6; i++) {		// High
+		fe->weapon.gunFactor.gunPowerF[0][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Mid
+		if (i == (clock -2) / 2) {
+		} else {
+			fe->weapon.gunFactor.gunPowerF[1][i] = 0;
+		}
+	}
+	for (i = 0; i < 6; i++) {		// Low
+		fe->weapon.gunFactor.gunPowerF[2][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Above, Below
+		fe->weapon.gunFactor.gunPowerF[3][i] = 0;
+	}
+}
+
+void MapAirForce::deleteUnusedGunFactorFExcpA(firingEntry *fe, int clock)
+{
+	int	i;
+
+	for (i = 0; i < 6; i++) {		// High
+		fe->weapon.gunFactor.gunPowerF[0][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Mid
+		fe->weapon.gunFactor.gunPowerF[1][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Low
+		fe->weapon.gunFactor.gunPowerF[2][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Above, Below
+		if (i == 0) {
+		} else {
+			fe->weapon.gunFactor.gunPowerF[3][i] = 0;
+		}
+	}
+}
+
+void MapAirForce::deleteUnusedGunFactorFExcpB(firingEntry *fe, int clock)
+{
+	int	i;
+
+	for (i = 0; i < 6; i++) {		// High
+		fe->weapon.gunFactor.gunPowerF[0][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Mid
+		fe->weapon.gunFactor.gunPowerF[1][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Low
+		fe->weapon.gunFactor.gunPowerF[2][i] = 0;
+	}
+	for (i = 0; i < 6; i++) {		// Above, Below
+		if (i == 1) {
+		} else {
+			fe->weapon.gunFactor.gunPowerF[3][i] = 0;
+		}
+	}
+}
+
+void MapAirForce::deleteUnusedGunFactorF(firingEntry *p_fe, cmdForm formA, cmdForm formT)
+{
+	int 	clockAtoT;
+
+	clockAtoT = getClock(formA, formT);
+
+	if (clockAtoT == 14) {					// Above
+		deleteUnusedGunFactorFExcpA(p_fe, clockAtoT);
+	} else if (clockAtoT == 16) {				// Below
+		deleteUnusedGunFactorFExcpB(p_fe, clockAtoT);
+	} else if (clockAtoT == 18) {				// Colision
+	} else {
+		if (formT.alt - formA.alt >= 500.0f) {		// High
+			deleteUnusedGunFactorFExcpH(p_fe, clockAtoT);
+		} else if (formT.alt - formA.alt <= -500.0f) {	// Low
+			deleteUnusedGunFactorFExcpL(p_fe, clockAtoT);
+		} else {                                 	// Mid
+			deleteUnusedGunFactorFExcpM(p_fe, clockAtoT);
+		}
+	}
+}
+
+void MapAirForce::cmdToGameAppendFiring(int acIDtarget)
+{
+	int	distH, distV, modifA, modifT, modifD, modifP;
+	cmdForm	a_formA[2];
+	cmdForm	a_formT[2];
+
+	cmdToGameGetAC_selected(a_formA);
+	if (a_formA[0].command == TAIL) {
+		return;
+	}
+	cmdToGameGetAC_acID(a_formT, acIDtarget);
+	if (a_formT[0].command == TAIL) {
+		return;
+	}
+
+	distH = getDistanceHex(a_formA[0], a_formT[0]);
+	distV = (int) (abs(a_formA[0].alt - a_formT[0].alt) / 500.0f);
+	modifA = getFireModifierA(a_formA[0]);
+	modifT = getFireModifierT(a_formT[0]);
+	modifD = getFireModifierD(a_formA[0], a_formT[0]);
+	modifP = getFireModifierP(a_formA[0]);
+
+	if (a_formA[0].command != TAIL) {
+		cmdForm	form;
+		cmdForm *p_dummy = NULL;
+		form.command = APPEND_FIRING;
+		form.firingEnt.acIDattacker = a_formA[0].aircraftID;
+		form.firingEnt.acIDtarget = acIDtarget;
+		form.firingEnt.weapon = m_selectedFireArc;
+		form.firingEnt.distanceH = distH;
+		form.firingEnt.distanceV = distV;
+		form.firingEnt.modifierA = modifA; 
+		form.firingEnt.modifierT = modifT; 
+		form.firingEnt.modifierD = modifD; 
+		form.firingEnt.modifierP = modifP; 
+		form.firingEnt.attenuation = 0;
+		form.firingEnt.dieRoll = 0;
+		form.firingEnt.result = L"";
+		deleteUnusedGunFactorF(&(form.firingEnt), a_formA[0], a_formT[0]);
+		if (mp_ownerGame) {
+			((GameAirForce*)mp_ownerGame)->cmdToGame(APPEND_FIRING, form, p_dummy);
+		}
+
+	}
 }
 
 void MapAirForce::OnLButtonUp(int pixelX, int pixelY, DWORD flags) 
@@ -4585,15 +5252,20 @@ void MapAirForce::OnLButtonUp(int pixelX, int pixelY, DWORD flags)
 		rtn[0].virCorX = m_virCorSelectedX;
 		rtn[0].virCorY = m_virCorSelectedY;
 		((GameAirForce*)mp_ownerGame)->cmdToGame(DISPATCH, rtn[0], NULL);
-        	InvalidateRect(m_hwnd, NULL, FALSE);
+//        	InvalidateRect(m_hwnd, NULL, FALSE);
 	}
 
 	if (m_mapStat == MAP_FIRE_AIM) {
-		int	acID_target;
+		int acID_target;
 		SetMapStat(SELECTED);
 		acID_target = selectTarget(pixelX, pixelY, flags);
+		if (acID_target > 0) {
+			cmdToGameAppendFiring(acID_target);
+		}
+		ReleaseCapture();
 
 	}
+      	InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 int MapAirForce::getManuvMenuSelItemClimb(int selID, cmdForm *p_formRtnGetManuvable)
@@ -5412,6 +6084,91 @@ void GameAirForce::cmdGetDispatched(cmdForm *p_rtnForms)
 	
 }
 
+BOOL GameAirForce::calculateFiringEnt(cmdForm *p_form)
+{
+	int	idA = p_form->firingEnt.acIDattacker;
+	int	idT = p_form->firingEnt.acIDtarget;
+
+	cmdForm	formA[2];
+	cmdForm	formT[2];
+	cmdToGameGetAC_acID(formA, idA);
+	cmdToGameGetAC_acID(formT, idT);
+	if (formA[0].command == TAIL) {
+		return false;
+	}
+	if (formT[0].command == TAIL) {
+		return false;
+	}
+}
+
+void GameAirForce::cmdAppendFiring(cmdForm form)
+{
+	list<std::shared_ptr<firingEntry>>::iterator itrFiringEnt;
+	bool	registered = false;
+	int	size, index, i;
+
+	size = m_firingEntries.size();
+	i = size;
+
+	// register to member variable "m_firingEntries"
+	for (itrFiringEnt = m_firingEntries.begin(); 
+		itrFiringEnt != m_firingEntries.end(); 
+		itrFiringEnt++) {
+		if (((*itrFiringEnt)->acIDattacker == form.firingEnt.acIDattacker) 
+		  && (*itrFiringEnt)->gameTurn == m_gameTurn){
+			registered = true;
+			break;
+		}
+		i--;
+	}
+	if (registered) {
+		index = i -1;
+	} else {
+		shared_ptr<firingEntry> ptrFiringEnt(new firingEntry);
+		m_firingEntries.push_front(ptrFiringEnt);
+		itrFiringEnt = m_firingEntries.begin();
+		index = size;
+	}
+	form.firingEnt.gameTurn = m_gameTurn;
+	(**itrFiringEnt) = form.firingEnt; 
+
+	// register to ListView "Firing Table"
+	if (registered) {
+		setFiringEntFiringTable(m_hwndLV_FiringTable, &(form.firingEnt), index);
+	} else {
+		insertFiringEntFiringTable(m_hwndLV_FiringTable, &(form.firingEnt), 0);
+	}
+}
+
+void GameAirForce::cmdGetFirings(cmdForm form, cmdForm *p_rtnForms)
+{
+	list<std::shared_ptr<firingEntry>>::iterator itrFiringEnt;
+	int	i = 0;
+
+	if (form.selectedAircraft == ALL_AC) {
+		for (itrFiringEnt = m_firingEntries.begin(); 
+		itrFiringEnt != m_firingEntries.end(); 
+		itrFiringEnt++) {
+			p_rtnForms[i].command = GET_FIRINGS;
+			p_rtnForms[i].firingEnt = **itrFiringEnt;
+			i++;
+		}
+		p_rtnForms[i].command = TAIL;
+	} else if (form.selectedAircraft >= 0) {
+		for (itrFiringEnt = m_firingEntries.begin(); 
+		itrFiringEnt != m_firingEntries.end(); 
+		itrFiringEnt++) {
+			if ((*itrFiringEnt)->acIDattacker == form.selectedAircraft) {
+				p_rtnForms[i].command = GET_FIRINGS;
+				p_rtnForms[i].firingEnt = **itrFiringEnt;
+			i++;
+			}
+		}
+		p_rtnForms[i].command = TAIL;
+	} else {
+	}
+}
+
 void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 {
 	list<std::shared_ptr<PlayerAirForce>>::iterator itrPlayer;
@@ -5437,6 +6194,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case APPEND_MANUV:
 		case DELETE_MANUV:
 		case GET_FIRE_RANGE:
+		case GET_ACID:
 			if (form.playerID == SELECTED_PLAYER) {
 				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
 			} else if (form.playerID == ALL_PLAYERS) {
@@ -5516,8 +6274,14 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 
 			}
 			break;
-
-
+		case APPEND_FIRING:
+			cmdAppendFiring(form);
+			break;
+		case DELETE_FIRING:
+			break;
+		case GET_FIRINGS:
+			cmdGetFirings(form, p_rtnForms);
+			break;
 	}
 }
 
@@ -6020,6 +6784,425 @@ void GameAirForce::OnPaint()
 		}
 		EndPaint(m_hwnd, &ps);
 	}
+//	HWND hwndListView = createListView(m_hwnd, 500, 500);
+//	ShowWindow(hwndListView, SW_SHOW);
+//	insertItemsFiringTable(m_hwndLV_FiringTable);
+}
+
+int GameAirForce::referHitTableWing(int column, int die)
+{
+	int	hitTbl[][21]= {
+//		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20
+		{-1, 0, 0, 0, 0, 0, 1, 2, 2, 0, 0, 1, 0, 1, 1, 1, 3, 1, 0, 1, 3},	//die=1
+		{-1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 3, 1, 1, 1, 2, 1, 1},	//die=2
+		{-1, 0, 1, 0, 0, 0, 2, 0, 0, 1, 0, 3, 3, 3, 0, 3, 0, 1, 3, 3, 2},	//die=3
+		{-1, 0, 0, 0, 0, 1, 0, 1, 1, 2, 3, 1, 0, 0, 2, 0, 1, 3, 1, 2, 1},	//die=4
+		{-1, 0, 0, 0, 2, 2, 1, 1, 0, 1, 1, 0, 2, 1, 0, 0, 0, 1, 1, 1, 1},	//die=5
+		{-1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1},	//die=6
+	};
+
+	return hitTbl[die -1][column];
+}
+
+int GameAirForce::referHitTableFuselage(int column, int die)
+{
+	int	hitTbl[][21]= {
+//		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20
+		{-1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 2, 1, 2, 1, 1, 0, 2, 2, 3, 2, 3},	//die=1
+		{-1, 0, 1, 0, 2, 0, 2, 1, 0, 2, 1, 1, 1, 2, 2, 1, 0, 1, 1, 1, 1},	//die=2
+		{-1, 0, 0, 0, 0, 2, 1, 0, 2, 1, 1, 0, 0, 0, 2, 0, 1, 2, 0, 3, 2},	//die=3
+		{-1, 0, 0, 2, 0, 1, 1, 1, 0, 0, 0, 2, 2, 1, 0, 2, 2, 0, 2, 0, 1},	//die=4
+		{-1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 2, 2, 2, 0, 1, 0},	//die=5
+		{-1, 0, 0, 0, 0, 0, 1, 2, 1, 1, 0, 1, 1, 2, 1, 2, 0, 0, 2, 2, 2},	//die=6
+	};
+
+	return hitTbl[die -1][column];
+}
+
+int GameAirForce::referHitTableCockpit(int column, int die)
+{
+	int	hitTbl[][21]= {
+//		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20
+		{-1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 2, 2, 0},	//die=1
+		{-1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 2, 1, 1, 1, 3},	//die=2
+		{-1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0},	//die=3
+		{-1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1},	//die=4
+		{-1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0},	//die=5
+		{-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 2, 0, 0, 1},	//die=6
+	};
+
+	return hitTbl[die -1][column];
+}
+
+int GameAirForce::referHitTableEngine(int column, int die)
+{
+	int	hitTbl[][21]= {
+//		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20
+		{-1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 2, 0, 2, 2, 0, 1, 0, 1, 1},	//die=1
+		{-1, 0, 0, 1, 0, 0, 0, 1, 1, 2, 2, 2, 0, 1, 0, 1, 1, 2, 1, 3, 1},	//die=2
+		{-1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1},	//die=3
+		{-1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1},	//die=4
+		{-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 1, 1, 2, 1, 2, 1, 3},	//die=5
+		{-1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0},	//die=6
+	};
+
+	return hitTbl[die -1][column];
+}
+
+int GameAirForce::referHitTableGun(int column, int die)
+{
+	int	hitTbl[][21]= {
+//		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20
+		{-1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0},	//die=1
+		{-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1},	//die=2
+		{-1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0},	//die=3
+		{-1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0},	//die=4
+		{-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1},	//die=5
+		{-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1},	//die=6
+	};
+
+	return hitTbl[die -1][column];
+}
+
+int GameAirForce::referHitTableFuel(int column, int die)
+{
+	int	hitTbl[][21]= {
+//		  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20
+		{-1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0},	//die=1
+		{-1, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0},	//die=2
+		{-1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1},	//die=3
+		{-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 2},	//die=4
+		{-1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 0, 1, 2, 1},	//die=5
+		{-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0},	//die=6
+	};
+
+	return hitTbl[die -1][column];
+}
+
+void GameAirForce::referHitTable(int column, BOOL concentrate, hitResult *p_hr)
+{
+	int die0 = rollDice();
+
+	int wing, fuselage, cockpit, engine, gun, fuel, sum;
+	
+	wing = referHitTableWing(column, die0);
+	fuselage = referHitTableFuselage(column, die0);
+	cockpit = referHitTableCockpit(column, die0);
+	engine = referHitTableEngine(column, die0);
+	gun = referHitTableGun(column, die0);
+	fuel = referHitTableFuel(column, die0);
+	sum = wing + fuselage + cockpit + engine + gun + fuel;
+
+	if (concentrate) {
+		int die1 = rollDice();
+		switch (die1) {
+			case 1:
+				wing = sum;
+				fuselage = cockpit = engine = gun = fuel = 0;
+				break;
+			case 2:
+				fuselage = sum;
+				wing = cockpit = engine = gun = fuel = 0;
+				break;
+			case 3:
+				cockpit = sum;
+				wing = fuselage = engine = gun = fuel = 0;
+				break;
+			case 4:
+				engine = sum;
+				wing = fuselage = cockpit = gun = fuel = 0;
+				break;
+			case 5:
+				gun = sum;
+				wing = fuselage = cockpit = engine = fuel = 0;
+				break;
+			case 6:
+				fuel = sum;
+				wing = fuselage = cockpit = engine = gun = 0;
+				break;
+			default:
+				break;
+		}
+	} else {
+	}
+	p_hr->wing = wing;
+	p_hr->fuselage = fuselage;
+	p_hr->cockpit = cockpit;
+	p_hr->engine = engine;
+	p_hr->gun = gun;
+	p_hr->fuel = fuel;
+	p_hr->die = die0;
+}
+
+hitResult GameAirForce::resolveFire(int index)
+{
+	LVITEM		lvi;
+	static wchar_t  str[32];
+	BOOL		success = false;
+	int gunF, distance, attenuation, modifier;
+	hitResult	hr;
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 0;
+	lvi.pszText = str;
+	lvi.cchTextMax = 32;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 2;
+	lvi.pszText = str;
+	lvi.cchTextMax = 32;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+	gunF = _wtoi(str);
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 3;
+	lvi.pszText = str;
+	lvi.cchTextMax = 32;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+	distance = _wtoi(str);
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 4;
+	lvi.pszText = str;
+	lvi.cchTextMax = 32;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+	attenuation = _wtoi(str);
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 5;
+	lvi.pszText = str;
+	lvi.cchTextMax = 32;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+	modifier = _wtoi(str);
+
+	referHitTable(attenuation + modifier, false, &hr);
+
+	return hr;
+}
+
+void GameAirForce::makeHitTblStr(hitResult hr, wchar_t *a_str)
+{
+	int	i;
+	int	size = sizeof (a_str);
+
+	wchar_t str[32] = L"abc";
+	StringCchCatW(str, STRSAFE_MAX_CCH, L"DEF");
+
+	i = hr.wing;
+	while (i > 0) {
+//		if (StringCchCatW(a_str, sizeof(a_str), L"W") == NULL) {
+		if (StringCchCatW(a_str, STRSAFE_MAX_CCH, L"W") != S_OK) {
+			MessageBox(NULL, 
+  				L"Error: makeHitTblStr: failed to lstrcat.\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}	
+		i--;
+	}
+	i = hr.fuselage;
+	while (i > 0) {
+		if (StringCchCatW(a_str, STRSAFE_MAX_CCH,  L"F") != S_OK) {
+			MessageBox(NULL, 
+  				L"Error: makeHitTblStr: failed to lstrcat.\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}	
+		i--;
+	}
+	i = hr.cockpit;
+	while (i > 0) {
+		if (StringCchCatW(a_str, STRSAFE_MAX_CCH,  L"C") != S_OK) {
+			MessageBox(NULL, 
+  				L"Error: makeHitTblStr: failed to lstrcat.\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}	
+		i--;
+	}
+	i = hr.engine;
+	while (i > 0) {
+		if (StringCchCatW(a_str, STRSAFE_MAX_CCH,  L"E") != S_OK) {
+			MessageBox(NULL, 
+  				L"Error: makeHitTblStr: failed to lstrcat.\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}	
+		i--;
+	}
+	i = hr.gun;
+	while (i > 0) {
+		if (StringCchCatW(a_str, STRSAFE_MAX_CCH,  L"G") != S_OK) {
+			MessageBox(NULL, 
+  				L"Error: makeHitTblStr: failed to lstrcat.\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}	
+		i--;
+	}
+	i = hr.fuel;
+	while (i > 0) {
+		if (StringCchCatW(a_str, STRSAFE_MAX_CCH,  L"L") != S_OK) {
+			MessageBox(NULL, 
+  				L"Error: makeHitTblStr: failed to lstrcat.\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}	
+		i--;
+	}
+}
+
+void GameAirForce::setFireTableResult(int index, hitResult hr)
+{
+	LVITEM		lvi;
+	wchar_t  	str[32] = L"";
+	BOOL		success = false;
+
+	makeHitTblStr(hr, str);
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = str;
+	lvi.iItem = index;
+	lvi.iSubItem = 7;
+	success = ListView_SetItem(m_hwndLV_FiringTable, &lvi);
+
+	wsprintf(str, L"%d", hr.die);
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = str;
+	lvi.iItem = index;
+	lvi.iSubItem = 6;
+	success = ListView_SetItem(m_hwndLV_FiringTable, &lvi);
+
+}
+
+void GameAirForce::resolveFires()
+{
+	int cnt;
+	cnt = ListView_GetItemCount(m_hwndLV_FiringTable);
+
+	hitResult	hr;
+	int 		i;
+	for (i = 0; i < cnt; i++) {
+		hr = resolveFire(i);
+		setFireTableResult(i, hr);
+	}
+}
+
+BOOL GameAirForce::addResolvedFireToFE(wchar_t *nameAttacker, int attenuation, int die, wchar_t *result);
+{
+	list<std::shared_ptr<firingEntry>>::iterator itrFiringEnt;
+	firingEntry	fe;
+	static int	i = 0;
+	int		acid;
+	cmdForm		form;
+	cmdForm		rtn[20];
+
+	form.command = GET_ACID;
+	//Syntax:  wcscpy(p_destination, p_source)
+	wcscpy(form.aircraftName, nameAttacker);
+	form.playerID = ALL_PLAYERS;
+	cmdToGame(GET_ACID, form, rtn);
+	if (rtn[0].command == TAIL) {
+		return false;
+	}
+	acid = rtn[0].selectedAircraft;
+
+	for (itrFiringEnt = m_firingEntries.begin(); 
+  	     itrFiringEnt != m_firingEntries.end(); 
+	     itrFiringEnt++) {
+		if ((*itrFiringEnt)->gameTurn == m_gameTurn) {
+			if ((*itrFiringEnt)->acIDattacker == acid) {
+				(*itrFiringEnt)->attenation += attenuation;
+				(*itrFiringEnt)->dieRoll += die;
+				StringCchCat((*itrFiringEnt)->result, STRSAFE_MAX_CCH, result);
+				return true;
+			}
+		}
+	}
+	return false;
+
+}
+
+BOOL GameAirForce::reflectResolvedFireToFE(int index)
+{
+	LVITEM		lvi;
+	static wchar_t  nameAttacker[64];
+	static wchar_t 	result[32];
+	int attenuation, modifier;
+
+	static wchar_t  str[32];
+	BOOL		success = false;
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 0;
+	lvi.pszText = nameAttacker;
+	lvi.cchTextMax = 64;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+	if (!success) {
+		return false;
+	}
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 4;
+	lvi.pszText = str;
+	lvi.cchTextMax = 32;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+	if (!success) {
+		return false;
+	}
+	attenuation = _wtoi(str);
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 6;
+	lvi.pszText = str;
+	lvi.cchTextMax = 32;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+	if (!success) {
+		return false;
+	}
+	die = _wtoi(str);
+
+	lvi.mask =LVIF_TEXT;
+	lvi.iItem = index;
+	lvi.iSubItem = 7;
+	lvi.pszText = result;
+	lvi.cchTextMax = 32;
+	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
+	if (!success) {
+		return false;
+	}
+
+	addResolvedFireToFE(nameAttacker, attenuation, die, result);
+	return true;
+}
+
+void GameAirForce::reflectResolvedFireToFEs()
+{
+	int cnt;
+	cnt = ListView_GetItemCount(m_hwndLV_FiringTable);
+
+	for (i = 0; i < cnt; i++) {
+		reflectResolvedFireToFE(i);
+	}
+
+}
+
+void GameAirForce::onExitGameModeFire()
+{
+	resolveFires();
 }
 
 void GameAirForce::OnButtonProceed()
@@ -6029,6 +7212,7 @@ void GameAirForce::OnButtonProceed()
 			m_gameMode = GM_FIRE;
 			break;
 		case GM_FIRE:
+			onExitGameModeFire();
 			m_gameMode = GM_BOMB;
 			break;
 		case GM_BOMB:
@@ -6063,9 +7247,487 @@ void GameAirForce::OnButtonProceed()
         InvalidateRect(m_hwnd, NULL, TRUE);
 }
 
+/*
+void GameAirForce::insertItemsFiringTable(HWND hwndListView)
+{
+	LVITEM		lvi;
+
+	lvi.mask =LVIF_TEXT;
+	lvi.pszText = L"attacker0";
+	lvi.iItem = 0;
+	lvi.iSubItem = 0;
+	ListView_InsertItem(hwndListView, &lvi);
+
+//	lvi.mask =LVIF_TEXT;
+	lvi.pszText = L"target0";
+	lvi.iItem = 0;
+	lvi.iSubItem = 1;
+	ListView_SetItem(hwndListView, &lvi);
+
+//	lvi.mask =LVIF_TEXT;
+	lvi.pszText = L"attacker1";
+	lvi.iItem = 1;
+	lvi.iSubItem = 0;
+	ListView_InsertItem(hwndListView, &lvi);
+
+//	lvi.mask =LVIF_TEXT;
+	lvi.pszText = L"target1";
+	lvi.iItem = 1;
+	lvi.iSubItem = 1;
+	ListView_SetItem(hwndListView, &lvi);
+}
+ */
+
+
+void GameAirForce::cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID)
+{
+	cmdForm form;
+	form.command = GET_AC;
+	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = acID;
+
+	cmdToGame(GET_AC, form, p_cmdForm);
+}
+
+int GameAirForce::insertFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index)
+{
+	LVITEM		lvi;
+	int		indexRtn;
+
+	lvi.mask =LVIF_TEXT;
+	lvi.pszText = p_form->aircraftName;
+//	lvi.pszText = LPSTR_TEXTCALLBACK;
+	lvi.iItem = index;
+	lvi.iSubItem = 0;
+	indexRtn = ListView_InsertItem(hwndListView, &lvi);
+
+	return indexRtn;
+}
+
+BOOL GameAirForce::setFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index)
+{
+	LVITEM		lvi;
+	BOOL		success = false;
+
+	lvi.mask =LVIF_TEXT;
+	lvi.pszText = p_form->aircraftName;
+//	lvi.pszText = LPSTR_TEXTCALLBACK;
+	lvi.iItem = index;
+	lvi.iSubItem = 0;
+	success = ListView_SetItem(hwndListView, &lvi);
+
+	return success;
+}
+
+void GameAirForce::insertFormTargetFiringTable(HWND hwndListView, cmdForm *p_form, int index)
+{
+	LVITEM		lvi;
+
+	lvi.mask =LVIF_TEXT;
+	lvi.pszText = p_form->aircraftName;
+//	lvi.pszText = LPSTR_TEXTCALLBACK;
+	lvi.iItem = index;
+	lvi.iSubItem = 1;
+	ListView_SetItem(hwndListView, &lvi);
+}
+
+BOOL GameAirForce::setFormTargetFiringTable(HWND hwndListView, cmdForm *p_form, int index)
+{
+	LVITEM		lvi;
+	BOOL		success = false;
+
+	lvi.mask =LVIF_TEXT;
+	lvi.pszText = p_form->aircraftName;
+//	lvi.pszText = LPSTR_TEXTCALLBACK;
+	lvi.iItem = index;
+	lvi.iSubItem = 1;
+	success = ListView_SetItem(hwndListView, &lvi);
+
+	return success;
+}
+
+BOOL GameAirForce::setGunFactorToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
+{
+	LVITEM		lvi;
+	BOOL		success = false;
+	static wchar_t	strGunF[8];
+
+	int		i, j;
+	int		gunF = 0;
+
+	gunF += p_firingEnt->weapon.gunFactor.gunPowerFFmg;
+	gunF += p_firingEnt->weapon.gunFactor.gunPowerFFcannon;
+	gunF += p_firingEnt->weapon.gunFactor.gunPowerFH;
+	gunF += p_firingEnt->weapon.gunFactor.gunPowerFL;
+	for (i = 0; i < 4; i++) {
+		for (j = 0; j < 6; j++) {
+			gunF += p_firingEnt->weapon.gunFactor.gunPowerF[i][j];
+		}
+	}
+	wsprintf(strGunF, L"%d", gunF);
+
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = strGunF;
+	lvi.iItem = index;
+	lvi.iSubItem = 2;
+	success = ListView_SetItem(hwndListView, &lvi);
+
+	return success;
+}
+
+BOOL GameAirForce::setDistanceToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
+{
+	LVITEM		lvi;
+	BOOL		success = false;
+	static wchar_t	strDistance[8];
+
+	int		distance = 0;
+
+	distance = p_firingEnt->distanceH + p_firingEnt->distanceV;
+	
+	wsprintf(strDistance, L"%d", distance);
+
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = strDistance;
+	lvi.iItem = index;
+	lvi.iSubItem = 3;
+	success = ListView_SetItem(hwndListView, &lvi);
+
+	return success;
+}
+
+BOOL GameAirForce::setAttenuationToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
+{
+	LVITEM		lvi;
+	BOOL		success = false;
+	static wchar_t	str[8];
+
+	int		attenu = 0;
+	int		gunF = 0;
+	int		distance = -1;
+
+	gunF += p_firingEnt->weapon.gunFactor.gunPowerFFmg;
+	gunF += p_firingEnt->weapon.gunFactor.gunPowerFFcannon;
+	gunF += p_firingEnt->weapon.gunFactor.gunPowerFH;
+	gunF += p_firingEnt->weapon.gunFactor.gunPowerFL;
+
+	int i, j;
+	for (i = 0; i < 4; i++) {
+		for (j = 0; j < 6; j++) {
+			gunF += p_firingEnt->weapon.gunFactor.gunPowerF[i][j];
+		}
+	}
+	distance = p_firingEnt->distanceH + p_firingEnt->distanceV;
+
+	const int rangeAttenuIdx[] =
+		{ 2,  4,  6,  8, 10, 12, 15, 18, 22, 26, -1};
+	const int rangeAttenuTbl[][6] =
+		{	{-1, -1, -2, -2, -3, -3},
+			{ 1,  0,  0, -1, -2, -2},
+			{ 2,  2,  1,  1,  0, -1},
+			{ 5,  4,  3,  2,  0, -1},
+			{ 8,  5,  5,  2,  2, -1},
+			{10,  8,  6,  4,  2,  0},
+			{11,  9,  7,  6,  3,  1},
+			{15, 12,  9,  7,  4,  2},
+			{16, 13, 10,  7,  5,  2},
+			{18, 14, 11,  8,  5,  3},
+			{20, 16, 13,  9,  7,  4}, };
+
+	for (i = 0; rangeAttenuIdx[i] <= gunF; i++) {
+	}
+	attenu = rangeAttenuTbl[i][distance];
+	wsprintf(str, L"%d", attenu);
+
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = str;
+	lvi.iItem = index;
+	lvi.iSubItem = 4;
+	success = ListView_SetItem(hwndListView, &lvi);
+
+	return success;
+}
+
+BOOL GameAirForce::setModifierToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
+{
+	LVITEM		lvi;
+	BOOL		success = false;
+	static wchar_t	strModifier[8];
+
+	int		modifier = 0;
+
+	modifier = p_firingEnt->modifierA 
+		 + p_firingEnt->modifierT
+		 + p_firingEnt->modifierD
+		 + p_firingEnt->modifierP;
+	
+	wsprintf(strModifier, L"%d", modifier);
+
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = strModifier;
+	lvi.iItem = index;
+	lvi.iSubItem = 5;
+	success = ListView_SetItem(hwndListView, &lvi);
+
+	return success;
+}
+
+
+void GameAirForce::insertFiringEntFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
+{
+	int attackerID, targetID;
+	cmdForm rtn[20];
+	int indexRtn;
+
+	attackerID = p_firingEnt->acIDattacker;
+	targetID = p_firingEnt->acIDtarget;
+	
+//	insert attacker related items to ListView
+	cmdToGameGetAC_acID(rtn, attackerID);
+	if (rtn[0].command != TAIL) {
+		indexRtn = insertFormAttackerFiringTable(hwndListView, rtn, index);
+		if (indexRtn < 0) {
+			MessageBox(NULL, 
+  				L"Error: insertFiringEntFiringTable: failed to insert item.\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}
+	}
+
+//	set target related items to ListView	
+	cmdToGameGetAC_acID(rtn, targetID);
+	if (rtn[0].command != TAIL) {
+		insertFormTargetFiringTable(hwndListView, rtn, indexRtn);
+		setGunFactorToFireTable(hwndListView, p_firingEnt, index);
+		setDistanceToFireTable(hwndListView, p_firingEnt, index);
+		setAttenuationToFireTable(hwndListView, p_firingEnt, index);
+		setModifierToFireTable(hwndListView, p_firingEnt, index);
+	}
+}
+
+void GameAirForce::setFiringEntFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
+{
+	int attackerID, targetID;
+	cmdForm rtn[20];
+	BOOL	success = false;
+
+	attackerID = p_firingEnt->acIDattacker;
+	targetID = p_firingEnt->acIDtarget;
+	
+
+	cmdToGameGetAC_acID(rtn, attackerID);
+	if (rtn[0].command != TAIL) {
+		success = setFormAttackerFiringTable(hwndListView, rtn, index);
+		if (!success) {
+			MessageBox(NULL, 
+  				L"Error: setFiringEntFiringTable: failed to set item.\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}
+	}
+
+	cmdToGameGetAC_acID(rtn, targetID);
+	if (rtn[0].command != TAIL) {
+		setFormTargetFiringTable(hwndListView, rtn, index);
+		setGunFactorToFireTable(hwndListView, p_firingEnt, index);
+		setDistanceToFireTable(hwndListView, p_firingEnt, index);
+		setAttenuationToFireTable(hwndListView, p_firingEnt, index);
+		setModifierToFireTable(hwndListView, p_firingEnt, index);
+	}
+}
+
+void GameAirForce::insertItemsFiringTable(HWND hwndListView)
+{
+	list<std::shared_ptr<firingEntry>>::iterator itrFiringEnt;
+	firingEntry	fe;
+	static int	i = 0;
+
+	for (itrFiringEnt = m_firingEntries.begin(); 
+  	     itrFiringEnt != m_firingEntries.end(); 
+	     itrFiringEnt++) {
+		fe = **itrFiringEnt;
+		insertFiringEntFiringTable(hwndListView, &fe, i);
+		i++;
+	}
+}
+
+void GameAirForce::insertColumnsFiringTable(HWND hwndListView)
+{
+	LVCOLUMN	lvc;
+	int		rtn;
+
+	// PITFALL 2018/03/18
+	// without lvc.fmt =LVCFMT_LEFT, column name of "Target" would not show up.
+	// I dont know the reason 
+	
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.fmt = LVCFMT_LEFT;
+	lvc.cx = 180;
+	lvc.pszText = L"Attacker";
+	lvc.iSubItem = 0;
+	rtn = ListView_InsertColumn(hwndListView, 0, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsFiringTable: failed to insert column0.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 180;
+	lvc.pszText = L"Target";
+	lvc.iSubItem = 1;
+	rtn = ListView_InsertColumn(hwndListView, 1, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsFiringTable: failed to insert column1.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+	
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 80;
+	lvc.pszText = L"GunFactor";
+	lvc.iSubItem = 2;
+	rtn = ListView_InsertColumn(hwndListView, 2, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsFiringTable: failed to insert column2.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+	
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 80;
+	lvc.pszText = L"Distance";
+	lvc.iSubItem = 3;
+	rtn = ListView_InsertColumn(hwndListView, 3, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsFiringTable: failed to insert column3.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+	
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 80;
+	lvc.pszText = L"Atenuation";
+	lvc.iSubItem = 4;
+	rtn = ListView_InsertColumn(hwndListView, 4, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsFiringTable: failed to insert column4.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+	
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 80;
+	lvc.pszText = L"Modify";
+	lvc.iSubItem = 5;
+	rtn = ListView_InsertColumn(hwndListView, 5, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsFiringTable: failed to insert column5.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 80;
+	lvc.pszText = L"DieRol";
+	lvc.iSubItem = 6;
+	rtn = ListView_InsertColumn(hwndListView, 6, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsFiringTable: failed to insert column6.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 120;
+	lvc.pszText = L"Result";
+	lvc.iSubItem = 7;
+	rtn = ListView_InsertColumn(hwndListView, 7, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsFiringTable: failed to insert column7.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+}
+
+HWND GameAirForce::createFiringTable()
+{
+	HWND hwndListView;
+
+	m_hwndLV_FiringTable = CreateWindow(WC_LISTVIEW,
+			L"abc",
+			WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT,
+			100, 200, 880, 400,
+			m_hwnd,
+			(HMENU) IDC_LV_GAME_FIRINGTBL,
+			(HINSTANCE)GetWindowLong(m_hwnd, GWLP_HINSTANCE),
+			NULL
+	);
+	insertColumnsFiringTable(m_hwndLV_FiringTable);
+
+	return m_hwndLV_FiringTable;
+}
+
+void GameAirForce::handleWM_NOTIFY_FiringTable(LPARAM lParam)
+{
+	NMLVDISPINFO	*p_lvDispInfo;
+	int i = 0;
+//	static TCHAR name[][20] = { TEXT("attacker0"), TEXT("attacker1"), TEXT("attacker2"), TEXT("attacker3")};
+	static wchar_t *name[20] = { L"attacker0", L"attacker1", L"attacker2", L"attacker3", L"attacker4", L"attacker5",
+				L"attacker6", L"attacker7", L"attacker8", L"attacker9", L"attacker10", L"attacker11",
+				L"attacker12", L"attacker13", L"attacker14", L"attacker15", L"attacker16", L"attacker17"};
+	
+
+	p_lvDispInfo = (NMLVDISPINFO*) lParam;
+
+	i = p_lvDispInfo->item.iItem;
+
+	switch (((LPNMHDR) lParam)->code) {
+		case LVN_GETDISPINFO:
+			switch (p_lvDispInfo->item.iSubItem) {
+				case 0:
+					p_lvDispInfo->item.pszText = name[i];
+					break;
+				case 1:
+					p_lvDispInfo->item.pszText = name[i];
+					break;
+				default:
+					break;
+			}
+			i++;
+			break;
+		default:
+			break;
+	}
+}
+
+void GameAirForce::handleWM_NOTIFY(LPARAM lParam)
+{
+	handleWM_NOTIFY_FiringTable(lParam);
+}
+
 LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	HWND h_buttonProceed;
+	HWND hwndListView;
 
 	switch (uMsg)
     	{
@@ -6098,6 +7760,7 @@ LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			(HINSTANCE)GetWindowLong(m_hwnd, GWLP_HINSTANCE), 
 			NULL
 		);
+		hwndListView = createFiringTable();
 		break;
 
 	    case WM_DESTROY:
@@ -6194,6 +7857,9 @@ LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			SetCursor(hCursor);
 			return TRUE;
 		}
+		break;
+	    case WM_NOTIFY:
+		handleWM_NOTIFY(lParam);
 		break;
 	    }
 	    return DefWindowProc(m_hwnd, uMsg, wParam, lParam);
