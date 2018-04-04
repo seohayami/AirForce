@@ -149,7 +149,8 @@ enum AircraftStat {
 	ON_TRAY		= 1,
 	ON_MAP		= 2,
 	DISPATCHED 	= 3,
-	DEPLOYED 	= 4
+	DEPLOYED 	= 4,
+	SHOTDOWN	= 5,
 };
 
 enum CommandToX {
@@ -307,6 +308,11 @@ struct firingEntry {
 	wchar_t		result[32];
 };
 
+struct damage {
+	struct aircraftCompo hit;
+	struct aircraftCompo tolerance;
+};
+
 struct cmdForm {
 	CommandToX	command;
 	int		playerID;
@@ -331,17 +337,12 @@ struct cmdForm {
 	maneuverable	manuvable;
 	int		virCorXmanuv;
 	int		virCorYmanuv;
-	struct		damage;
+	damage		dmg;
 	firingArcRange	firingRange;
 	gunPower	gunPower;
 	firingEntry	firingEnt;
 	int		silhouette;
 	int		fireAccuracy;
-};
-
-struct damage {
-	struct aircraftCompo hit;
-	struct aircraftCompo tolerance;
 };
 
 struct ammo {
@@ -892,6 +893,10 @@ protected:
 		cmdForm *p_rtn, 
 		list<std::shared_ptr<Aircraft>>::iterator itr);
 	void cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerUSE_AMMO(cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerMODIFY_DAMAGE_Ac(cmdForm form, cmdForm *p_rtn, Aircraft *p_ac);
+	void cmdToPlayerMODIFY_DAMAGE(cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerUPDATE_ACSTAT(cmdForm form, cmdForm *p_rtn);
 
 public:
   //------------------- public member variables ---------------------
@@ -964,6 +969,24 @@ protected:
 	void makeHitTblStr(hitResult hr, wchar_t *a_str);
 	void setFireTableResult(int index, hitResult hr);
 	void resolveFires();
+	BOOL addResolvedFireToFE
+		(wchar_t *nameAttacker, int attenuation, int die, wchar_t *result);
+	BOOL reflectResolvedFireToFE(int index);
+	void reflectResolvedFireToFEs();
+	gunType getGunTypeFromACM(int acmID, int gunPosition);
+	int getGunTypeFromFE(itrFiringEnt fe);
+	void cmdToGameUSE_AMMO(firingEntry fe, int gunType);
+	void reflectFireToA(firingEntry fe);
+	void reflectFiresToAs();
+	attackSide getAttackSideLorR(firingEntry fe);
+	void modifyFormDamageFromDamageChrC(cmdForm *p_form, firingEntry fe);
+	void modifyFormDamageFromDamageChrE(cmdForm *p_form, firingEntry fe);
+	void modifyFormDamageFromDamageChrG(cmdForm *p_form, firingEntry fe);
+	void modifyFormDamageFromDamageChr(cmdForm *p_form, firingEntry fe, wchar_t chr);
+	void setFormDamageFormFE(cmdForm *p_form, firingEntry fe);
+	void reflectFireToT(firingEntry fe);
+	void reflectFiresToTs();
+
 	void onExitGameModeFire();
 	void OnButtonProceed();
 	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
