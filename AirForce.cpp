@@ -398,7 +398,7 @@ void Aircraft::drawInfoName(
 	float	y = m_trayPixelY + offsetY;
 
 	wchar_t strAcInfo[256];
-	static wchar_t strAcStat[][32] = {
+	const wchar_t strAcStat[][32] = {
 		L"UNDEFINED",
 		L"ON_TRAY",
 		L"ON_MAP",
