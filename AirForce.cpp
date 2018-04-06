@@ -254,8 +254,8 @@ HRESULT Aircraft::Draw(
 		ID2D1RenderTarget *p_renderTgt,
 		ID2D1SolidColorBrush *pBrush,
 		IWICImagingFactory *p_factory,
-		float x,
-		float y,
+		float x,	// not used
+		float y,	// not used
 		float width,
 		float height,
 		float heading
@@ -380,6 +380,54 @@ HRESULT Aircraft::Draw(
  
 	return hr;
 }
+
+void Aircraft::drawInfoName(
+		ID2D1RenderTarget *p_renderTgt,
+		ID2D1SolidColorBrush *pBrush,
+		IWICImagingFactory *p_factory,
+		float offsetX,
+		float offsetY,
+		float width,
+		float height
+		)
+{
+	HRESULT hr;
+	D2D1_COLOR_F originalColor = pBrush->GetColor();
+
+	float	x = m_trayPixelX + offsetX;
+	float	y = m_trayPixelY + offsetY;
+
+	wchar_t strAcInfo[256];
+	static wchar_t strAcStat[][32] = {
+		L"UNDEFINED",
+		L"ON_TRAY",
+		L"ON_MAP",
+		L"DEPLOYED",
+		L"DISPATCHED",
+		L"SHOTDOWN",
+		L"REMOVED",};
+
+	pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
+	swprintf(strAcInfo, L"Aircraft Name = %s\n
+			Aircraft Stat = %s\n
+			Ammo(MG) = %d / %d\n
+			Ammo(CN) = %d / %d\n", 
+			mAircraftName,
+			strAcStat[(int)m_stat],
+			m_ammo.fired.mg, m_ammo.payload.mg
+			m_ammo.fired.cannon, m_ammo.payload.cannon);
+	pRenderTarget->DrawText(
+		strAcInfo,
+		wcslen(strAcInfo) ,
+		mPtrTextFormat,
+		D2D1::RectF(x, y, 
+			x + width, y + height),
+		pBrush
+	);
+	pBrush->SetColor(originalColor);
+	p_renderTgt->SetTransform(D2D1::Matrix3x2F::Identity());
+}
+
 
 void Aircraft::GetLimit(int acm, cmdForm *p_rtn)
 {
@@ -1668,7 +1716,8 @@ void PlayerAirForce::cmdToPlayerMODIFY_DAMAGE(cmdForm form, cmdForm *p_rtn)
 	}
 }
 
-void PlayerAirForce::cmdToPlayerUPDATE_ACSTAT_Ac(cmdForm form, cmdForm *p_rtn, shared_ptr<Aircraft> p_ac)
+void PlayerAirForce::cmdToPlayerUPDATE_ACSTAT_Ac
+	(cmdForm form, cmdForm *p_rtn, shared_ptr<Aircraft> p_ac)
 {
 	int	i;
 
@@ -1954,8 +2003,6 @@ HRESULT PlayerAirForce::CreateDWriteTextFormat()
 
 void PlayerAirForce::WhereToDraw(float *x, float *y)
 {
-	static float drawX = 30.0f;
-	static float drawY = 30.0f;
 	const float pitchX = 0.0f;
 	const float pitchY = 60.0f;
 
@@ -1987,10 +2034,25 @@ void PlayerAirForce::OnPaint()
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
 	for (itr = mAircrafts.begin(); itr != mAircrafts.end(); ++itr) {
-		(*itr)->Draw(pRenderTarget, pBrush, m_p_imagingFactory,
-				offsetX, offsetY + interval * i,
-				40.0f, 40.0f, 60.0f);
+		(*itr)->Draw(pRenderTarget, 
+			pBrush, 
+			m_p_imagingFactory,
+			offsetX,		// not used 
+			offsetY + interval * i,	// not used
+			40.0f, 			// width
+			40.0f, 			// height
+			60.0f			// heading
+		);			
 		i++;
+		(*itr)->drawInfoName(
+			pRenderTarget,
+			pBrush,
+			m_p_imagingFactory,
+			40.0f,		// offsetX from m_trayPixelX
+			0.0f,		// offsetY from m_trayPixelY
+			180.0f,		// width
+			80.0f		// height
+		);
 	}
 
         hr = pRenderTarget->EndDraw();

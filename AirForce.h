@@ -148,9 +148,10 @@ enum AircraftStat {
 	UNDEFINED	= 0,
 	ON_TRAY		= 1,
 	ON_MAP		= 2,
-	DISPATCHED 	= 3,
-	DEPLOYED 	= 4,
-	SHOTDOWN	= 5,
+	DEPLOYED 	= 3, 	// on a tray
+	DISPATCHED 	= 4,	// moved from tray to map
+	SHOTDOWN	= 5,	// destroyed by attacker firing in the game turn
+	REMOVED		= 6,	// destroyed aircraft is removed in the next turn
 };
 
 enum CommandToX {
@@ -713,6 +714,15 @@ protected:
 	int	m_pilotExperience;
 	int 	m_maxDiveSpeed;
   //------------------- protected member functions ---------------------
+  	void drawInfoName(
+		ID2D1RenderTarget *p_renderTgt,
+		ID2D1SolidColorBrush *pBrush,
+		IWICImagingFactory *p_factory,
+		float offsetX,
+		float offsetY,
+		float width,
+		float height
+		);
 	int GetAltTblIndex();
 	float GetMaxAltChgClimb(int spdIncIndex);
 	float GetMaxAltChgDive(int spdIncIndex);
@@ -867,6 +877,8 @@ protected:
 	IDWriteTextFormat	*mPtrTextFormat;
 	IWICImagingFactory	*m_p_imagingFactory;
 	D2D1_POINT_2F		m_ptMouse;
+	float			m_drawOriginX;
+	float			m_drawOriginY;
 
   //------------------- protected member functions ---------------------
   	void cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn);
@@ -922,6 +934,8 @@ public:
 		mPtrDWriteFactory = NULL;
 		mPtrTextFormat = NULL;
 		m_p_imagingFactory = NULL;
+		m_drawOriginX = 30.0f;
+		m_drawOriginY = 30.0f;
 		mp_ownerGame = NULL;
 	};
 
