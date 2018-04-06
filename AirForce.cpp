@@ -1632,22 +1632,23 @@ void PlayerAirForce::cmdToPlayerUSE_AMMO(cmdForm form, cmdForm *p_rtn)
 	}
 }
 
-void PlayerAirForce::cmdToPlayerMODIFY_DAMAGE_Ac(cmdForm form, cmdForm *p_rtn, Aircraft *p_ac)
+void PlayerAirForce::cmdToPlayerMODIFY_DAMAGE_Ac(cmdForm form, cmdForm *p_rtn, shared_ptr<Aircraft> p_ac)
 {
 	int	i;
 
-	(*itr)->m_damage.hit.wing += form.damage.hit.wing;
-	(*itr)->m_damage.hit.fuselage += form.damage.hit.fuselage;
+	p_ac->m_damage.hit.wing += form.dmg.hit.wing;
+	p_ac->m_damage.hit.fuselage += form.dmg.hit.fuselage;
+
 	for (i = 0; i < 2; i++) {
-		(*itr)->m_damage.hit.cockpit[i] += form.damage.hit.cockpit[i];
+		p_ac->m_damage.hit.cockpit[i] += form.dmg.hit.cockpit[i];
 	}
 	for (i = 0; i < 4; i++) {
-		(*itr)->m_damage.hit.engine[i] += form.damage.hit.engine[i];
+		p_ac->m_damage.hit.engine[i] += form.dmg.hit.engine[i];
 	}
 	for (i = 0; i < 8; i++) {
-		(*itr)->m_damage.hit.gun[i] += form.damage.hit.gun[i];
+		p_ac->m_damage.hit.gun[i] += form.dmg.hit.gun[i];
 	}
-	(*itr)->m_damage.hit.fueltank += form.damage.hit.fueltank;
+	p_ac->m_damage.hit.fueltank += form.dmg.hit.fueltank;
 }
 
 void PlayerAirForce::cmdToPlayerMODIFY_DAMAGE(cmdForm form, cmdForm *p_rtn)
@@ -1660,7 +1661,6 @@ void PlayerAirForce::cmdToPlayerMODIFY_DAMAGE(cmdForm form, cmdForm *p_rtn)
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			cmdToPlayerMODIFY_DAMAGE_Ac(form, p_rtn, *itr);
 		}
-		p_rtn[i].command = TAIL;
 	} else {
 		if (form.selectedAircraft == (*itr)->m_id) {
 			cmdToPlayerMODIFY_DAMAGE_Ac(form, p_rtn, *itr);
@@ -1668,34 +1668,51 @@ void PlayerAirForce::cmdToPlayerMODIFY_DAMAGE(cmdForm form, cmdForm *p_rtn)
 	}
 }
 
-void PlayerAirForce::cmdToPlayerUPDATE_ACSTAT(cmdForm form, cmdForm *p_rtn)
+void PlayerAirForce::cmdToPlayerUPDATE_ACSTAT_Ac(cmdForm form, cmdForm *p_rtn, shared_ptr<Aircraft> p_ac)
 {
 	int	i;
 
 	if (p_ac->m_damage.hit.wing >= p_ac->m_damage.tolerance.wing) {
-		p_ac->m_stat = SHUTDOWN;
+		p_ac->m_stat = SHOTDOWN;
 	}
 	if (p_ac->m_damage.hit.fuselage >= p_ac->m_damage.tolerance.fuselage) {
-		p_ac->m_stat = SHUTDOWN;
+		p_ac->m_stat = SHOTDOWN;
 	}
 	for (i = 0; i < 2; i++) {
-		if (p_ac->m_damage.tolerance.cockpit[i] > 0 {
+		if (p_ac->m_damage.tolerance.cockpit[i] > 0) {
 			if (p_ac->m_damage.hit.cockpit[i] 
 			    >= p_ac->m_damage.tolerance.cockpit[i]) {
-				p_ac->m_stat = SHUTDOWN;
+				p_ac->m_stat = SHOTDOWN;
 			}
 		}
 	}
 	for (i = 0; i < 4; i++) {
-		if (p_ac->m_damage.tolerance.engine[i] > 0 {
+		if (p_ac->m_damage.tolerance.engine[i] > 0) {
 			if (p_ac->m_damage.hit.engine[i] 
 			    >= p_ac->m_damage.tolerance.engine[i]) {
-				p_ac->m_stat = SHUTDOWN;
+				p_ac->m_stat = SHOTDOWN;
 			}
 		}
 	}
 	if (p_ac->m_damage.hit.fueltank >= p_ac->m_damage.tolerance.fueltank) {
-		p_ac->m_stat = SHUTDOWN;
+		p_ac->m_stat = SHOTDOWN;
+	}
+}
+
+void PlayerAirForce::cmdToPlayerUPDATE_ACSTAT(cmdForm form, cmdForm *p_rtn)
+{
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+
+	if (form.selectedAircraft == SELECTED_AC) {
+		cmdToPlayerUPDATE_ACSTAT_Ac(form, p_rtn, *m_ItrSelectedAircraft);
+	} else if (form.selectedAircraft == ALL_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			cmdToPlayerUPDATE_ACSTAT_Ac(form, p_rtn, *itr);
+		}
+	} else {
+		if (form.selectedAircraft == (*itr)->m_id) {
+			cmdToPlayerUPDATE_ACSTAT_Ac(form, p_rtn, *itr);
+		}
 	}
 }
 
@@ -5252,6 +5269,7 @@ void MapAirForce::deleteUnusedGunFactorF(firingEntry *p_fe, cmdForm formA, cmdFo
 void MapAirForce::cmdToGameAppendFiring(int acIDtarget)
 {
 	int	distH, distV, modifA, modifT, modifD, modifP;
+	int	clkAtoT, clkTtoA;
 	cmdForm	a_formA[2];
 	cmdForm	a_formT[2];
 
@@ -5271,6 +5289,9 @@ void MapAirForce::cmdToGameAppendFiring(int acIDtarget)
 	modifD = getFireModifierD(a_formA[0], a_formT[0]);
 	modifP = getFireModifierP(a_formA[0]);
 
+	clkAtoT = getClock(a_formA[0], a_formT[0]);
+	clkTtoA = getClock(a_formT[0], a_formA[0]);
+
 	if (a_formA[0].command != TAIL) {
 		cmdForm	form;
 		cmdForm *p_dummy = NULL;
@@ -5289,6 +5310,8 @@ void MapAirForce::cmdToGameAppendFiring(int acIDtarget)
 //		form.firingEnt.result = L"";
 		form.firingEnt.result[0] = L'\0';
 		deleteUnusedGunFactorF(&(form.firingEnt), a_formA[0], a_formT[0]);
+		form.firingEnt.clockAtoT = clkAtoT;
+		form.firingEnt.clockTtoA = clkTtoA;
 		if (mp_ownerGame) {
 			((GameAirForce*)mp_ownerGame)->cmdToGame(APPEND_FIRING, form, p_dummy);
 		}
@@ -7295,7 +7318,7 @@ void GameAirForce::reflectResolvedFireToFEs()
 	}
 }
 
-int GameAirForce::getGunTypeFromACM(int acmID, int gunPosition)
+gunType GameAirForce::getGunTypeFromACM(int acmID, int gunPosition)
 {
 	int	i;
 	int	gType = 0;
@@ -7305,19 +7328,19 @@ int GameAirForce::getGunTypeFromACM(int acmID, int gunPosition)
 
 	for (i = 0; i < 8; i++) {
 		if (aircraftModels[acmID].gunPosition[i] == gunPosition) {
-			switch (aircraftModels[acmID].gunType) {
-				case gT_Non:
+			switch ((int)aircraftModels[acmID].gunType) {
+				case (int)gT_Non:
 					break;
-				case gT_MG:
+				case (int)gT_MG:
 					mg = true;
-					break
-				case gT_CN:
+					break;
+				case (int)gT_CN:
 					cn = true;
 					break;
-				case gT_MGCN:
+				case (int)gT_MGCN:
 					mg = true;
 					cn = true;
-					break
+					break;
 				default:
 					break;
 			}
@@ -7335,7 +7358,7 @@ int GameAirForce::getGunTypeFromACM(int acmID, int gunPosition)
 	}
 }
 
-gunType GameAirForce::getGunTypeFromFE(FiringEntry fe)
+gunType GameAirForce::getGunTypeFromFE(firingEntry fe)
 {
 	BOOL 	mg = false;
 	BOOL 	cannon = false;
@@ -7464,23 +7487,10 @@ attackSide GameAirForce::getAttackSideLorR(firingEntry fe)
 // 	right side.
 // 	if neither left nor right, die roll and decide left or right
 //
-	attackSide	side = UNDEF;
-	int acID_a = fe.acIDattacker;
-	int acID_t = fe.acIDtarget;
+	attackSide	side = AS_UNDEF;
 	
-	cmdForm	formA[5];
-	cmdForm	formT[5];
-	cmdToGameGetAC_acID(formA, acID_a);
-	if (formA[0].command == TAIL) {
-		return side;
-	}
-	cmdToGameGetAC_acID(formT, acID_t);
-	if (formT[0].command == TAIL) {
-		return side;
-	}
-
-	int clockAtoT = MapAirForce::getClock(formA[0], formT[0]);
-	int clockTtoA = MapAirForce::getClock(formT[0], formA[0]);
+	int clockAtoT = fe.clockAtoT;
+	int clockTtoA = fe.clockTtoA;
 
 	if ((clockTtoA == 2) || (clockTtoA == 4)) {
 		side = RIGHT;
@@ -7673,11 +7683,11 @@ void GameAirForce::modifyFormDamageFromDamageChr(cmdForm *p_form, firingEntry fe
 	}
 }
 
-void GameAirForce::setFormDamageFormFE(cmdForm *p_form, firingEntry fe)
+void GameAirForce::setFormDamageFromFE(cmdForm *p_form, firingEntry fe)
 {
-	wchar_t buf[32] = fe.result;
-//	Syntax:  wcscpy(p_destination, p_source)
-	wcscpy(buf, fe.result);
+	wchar_t buf[32];
+//	Syntax:  StringCchCopy(p_destination, sizeOfDest, p_source)
+	StringCchCopyW(buf, STRSAFE_MAX_CCH, fe.result);
 
 	wchar_t ch;
 	wchar_t p_ch = &ch;
@@ -7697,8 +7707,8 @@ void GameAirForce::setFormDamageFormFE(cmdForm *p_form, firingEntry fe)
 	}
 	p_form->dmg.hit.fueltank = 0;
 
-	while ( ; IsNullOrEmpty(buf); ) {
-		p_ch = buf.Substring(0, 1)
+	while ( ; buf[0] != '\0'; ) {
+		p_ch = buf.Substring(0, 1);
 		buf = buf.Substring(1);
 		modifyFormDamageFromDamageChr(p_form, fe, ch);
 	}
@@ -7733,7 +7743,8 @@ void GameAirForce::reflectFiresToTs()
 	}
 }
 
-void GameAirForce::updateAcStats() {
+void GameAirForce::updateAcStats() 
+{
 	cmdForm form;
 	form.command = UPDATE_ACSTAT;
 	form.playerID = ALL_PLAYERS;

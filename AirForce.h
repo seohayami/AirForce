@@ -174,10 +174,11 @@ enum CommandToX {
 	GET_ACID		= 17,
 	USE_AMMO		= 18,
 	MODIFY_DAMAGE		= 19,
+	UPDATE_ACSTAT		= 20,
 };
 
 enum attackSide {
-	UNDEF = -1,
+	AS_UNDEF = -1,
 	LEFT = 1,
 	RIGHT = 2,
 	FORWARD = 3,
@@ -306,6 +307,12 @@ struct firingEntry {
 	int		attenuation;
 	int		dieRoll;
 	wchar_t		result[32];
+	int		clockAtoT;	// clock from attacker to target
+	int		clockTtoA;	// clock from target to attacker
+					// 2, 4, 6, 8, 10, 12 oclock
+					// 14 if above
+					// 16 if below
+					// 18 if same hex, same alt (collision)
 };
 
 struct damage {
@@ -522,7 +529,6 @@ protected:
 	void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef);
 	int parseManuv(cmdForm *p_form);
 	int getDistanceHex(cmdForm formS, cmdForm fromD);
-	int getClock(cmdForm formS, cmdForm formD);
 
   	D2D1_POINT_2F	virCorToCenterF(int virCorX, int virCorY);
 	void	NumerateStackNum(cmdForm *p_rtn);
@@ -614,6 +620,7 @@ public:
 	cmdForm			m_formFromMap;
 
   //------------------- public member functions ---------------------
+	int getClock(cmdForm formS, cmdForm formD);
 	MapAirForce::MapAirForce() {
 		mPtrDWriteFactory = NULL;
 		mPtrTextFormat = NULL;
@@ -894,8 +901,11 @@ protected:
 		list<std::shared_ptr<Aircraft>>::iterator itr);
 	void cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn);
 	void cmdToPlayerUSE_AMMO(cmdForm form, cmdForm *p_rtn);
-	void cmdToPlayerMODIFY_DAMAGE_Ac(cmdForm form, cmdForm *p_rtn, Aircraft *p_ac);
-	void cmdToPlayerMODIFY_DAMAGE(cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerMODIFY_DAMAGE_Ac
+		(cmdForm form, cmdForm *p_rtn, shared_ptr<Aircraft> p_ac);
+	void cmdToPlayerMODIFY_DAMAGE (cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerUPDATE_ACSTAT_Ac
+		(cmdForm form, cmdForm *p_rtn, shared_ptr<Aircraft> p_ac);
 	void cmdToPlayerUPDATE_ACSTAT(cmdForm form, cmdForm *p_rtn);
 
 public:
@@ -974,7 +984,7 @@ protected:
 	BOOL reflectResolvedFireToFE(int index);
 	void reflectResolvedFireToFEs();
 	gunType getGunTypeFromACM(int acmID, int gunPosition);
-	int getGunTypeFromFE(itrFiringEnt fe);
+	gunType getGunTypeFromFE(firingEntry fe);
 	void cmdToGameUSE_AMMO(firingEntry fe, int gunType);
 	void reflectFireToA(firingEntry fe);
 	void reflectFiresToAs();
@@ -983,10 +993,11 @@ protected:
 	void modifyFormDamageFromDamageChrE(cmdForm *p_form, firingEntry fe);
 	void modifyFormDamageFromDamageChrG(cmdForm *p_form, firingEntry fe);
 	void modifyFormDamageFromDamageChr(cmdForm *p_form, firingEntry fe, wchar_t chr);
-	void setFormDamageFormFE(cmdForm *p_form, firingEntry fe);
+	void setFormDamageFromFE(cmdForm *p_form, firingEntry fe);
 	void reflectFireToT(firingEntry fe);
 	void reflectFiresToTs();
 
+	void updateAcStats();
 	void onExitGameModeFire();
 	void OnButtonProceed();
 	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
