@@ -5443,6 +5443,7 @@ void MapAirForce::OnLButtonUp(int pixelX, int pixelY, DWORD flags)
 
 	}
       	InvalidateRect(m_hwnd, NULL, FALSE);
+	UpdateWindow(m_hwnd);
 }
 
 int MapAirForce::getManuvMenuSelItemClimb(int selID, cmdForm *p_formRtnGetManuvable)
