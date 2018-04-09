@@ -5708,7 +5708,7 @@ void MapAirForce::OnLButtonUp(int pixelX, int pixelY, DWORD flags)
 		((GameAirForce*)mp_ownerGame)->cmdToGame(GET_AC, form2, rtn);
 
 		rtn[0].command = DISPATCH;
-		rtn[0].acStatus = DEPLOYED;
+		rtn[0].acStatus = DISPATCHED;
 		rtn[0].virCorX = m_virCorSelectedX;
 		rtn[0].virCorY = m_virCorSelectedY;
 		((GameAirForce*)mp_ownerGame)->cmdToGame(DISPATCH, rtn[0], NULL);
@@ -5721,6 +5721,8 @@ void MapAirForce::OnLButtonUp(int pixelX, int pixelY, DWORD flags)
 		acID_target = selectTarget(pixelX, pixelY, flags);
 		if (acID_target > 0) {
 			cmdToGameAppendFiring(acID_target);
+      			InvalidateRect(m_hwnd, NULL, FALSE);
+			UpdateWindow(m_hwnd);
 		}
 		ReleaseCapture();
 
