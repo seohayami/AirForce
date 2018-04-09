@@ -2072,6 +2072,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			&& ( ((cmd == GET_DISPATCHED)
 				   && ((*m_ItrSelectedAircraft)->m_stat == DISPATCHED
 				     ||(*m_ItrSelectedAircraft)->m_stat == DEPLOYED 
+				     ||(*m_ItrSelectedAircraft)->m_stat == SHOTDOWN 
 				      )
 			     )
 			   || (cmd == GET_AC) 
@@ -2114,7 +2115,8 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 				for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 					if (((cmd == GET_DISPATCHED) 
 						&& ((*itr)->m_stat == DISPATCHED
-						||  (*itr)->m_stat == DEPLOYED)	
+						||  (*itr)->m_stat == DEPLOYED	
+						||  (*itr)->m_stat == SHOTDOWN)	
 					   	)
 					   || (cmd == GET_AC)
 					   ||((cmd == GET_HIT)
