@@ -378,6 +378,7 @@ HRESULT Aircraft::Draw(
 		);
 	}
  
+	p_renderTgt->SetTransform(D2D1::Matrix3x2F::Identity());
 	return hr;
 }
 
@@ -385,6 +386,7 @@ void Aircraft::drawInfoName(
 		ID2D1RenderTarget *p_renderTgt,
 		ID2D1SolidColorBrush *pBrush,
 		IWICImagingFactory *p_factory,
+		IDWriteTextFormat *p_textFormat,
 		float offsetX,
 		float offsetY,
 		float width,
@@ -408,18 +410,15 @@ void Aircraft::drawInfoName(
 		L"REMOVED",};
 
 	pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
-	swprintf(strAcInfo, L"Aircraft Name = %s\n
-			Aircraft Stat = %s\n
-			Ammo(MG) = %d / %d\n
-			Ammo(CN) = %d / %d\n", 
+	swprintf(strAcInfo, L"Aircraft Name = %s\n Aircraft Stat = %s\n Ammo(MG) = %d / %d\n Ammo(CN) = %d / %d\n", 
 			mAircraftName,
 			strAcStat[(int)m_stat],
-			m_ammo.fired.mg, m_ammo.payload.mg
-			m_ammo.fired.cannon, m_ammo.payload.cannon);
-	pRenderTarget->DrawText(
+			m_ammo.payload.mg - m_ammo.fired.mg, m_ammo.payload.mg,
+			m_ammo.payload.cannon - m_ammo.fired.cannon, m_ammo.payload.cannon);
+	p_renderTgt->DrawText(
 		strAcInfo,
 		wcslen(strAcInfo) ,
-		mPtrTextFormat,
+		p_textFormat,
 		D2D1::RectF(x, y, 
 			x + width, y + height),
 		pBrush
@@ -427,6 +426,271 @@ void Aircraft::drawInfoName(
 	pBrush->SetColor(originalColor);
 	p_renderTgt->SetTransform(D2D1::Matrix3x2F::Identity());
 }
+
+HRESULT Aircraft::makeStrDamageCockpit(wchar_t *a_str)
+{
+	HRESULT	result = E_FAIL;
+	wchar_t	a_tmp[32];
+
+	if (a_str == NULL) {
+		result = E_FAIL;
+		return result;
+	}
+	swprintf(a_strTemp, L" cockpit = %d / %d", 
+		m_damage.tolerance.cockpit[0] - m_damage.hit.cockpit[0], 
+		m_damage.tolerance.cockpit[0]
+	);
+
+	if (m_damage.tolerance.cockpit[1] <= 0) {
+		swprintf(a_strTemp, L"\n" );
+	} else {
+		swprintf(a_strTemp, L", %d / %d\n", 
+			m_damage.tolerance.cockpit[1] - m_damage.hit.cockpit[1], 
+			m_damage.tolerance.cockpit[1]
+		);
+	}
+	result = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp);
+}
+
+HRESULT Aircraft::makeStrDamageEngine(wchar_t *a_str)
+{
+	HRESULT	hr = E_FAIL;
+	wchar_t	a_tmp[32];
+	int	i;
+
+	if (a_str == NULL) {
+		hr = E_FAIL;
+		return hr;
+	}
+	swprintf(a_strTemp, L" engine = %d / %d", 
+		m_damage.tolerance.engine[0] - m_damage.hit.engine[0], 
+		m_damage.tolerance.engine[0]
+	);
+
+	for (i = 1; i < 4; i++) {
+		if (m_damage.tolerance.engine[i] <= 0) {
+		} else {
+			swprintf(a_strTemp, L", %d / %d", 
+				m_damage.tolerance.cockpit[i] - m_damage.hit.cockpit[i], 
+				m_damage.tolerance.cockpit[i]
+			);
+		}
+		hr = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp);
+		if (FAILED(hr)) {
+			return hr;
+		}
+	}
+	swprintf(a_strTemp, L"\n");
+	result = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp);
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	return hr;
+}
+
+gunType Aircraft::getGunType(int index)
+{
+	if ((index < 0) 
+	||  (index >= 8)) {
+		MessageBox(NULL, 
+  			L"Error: getGunType: illegal argument..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return gT_Non;
+	}
+
+	return aircraftModels[mAircraftModel].gunType[index];
+}
+
+HRESULT Aircraft::catGunStatToStr(wchar_t *a_str, int index)
+{
+	HRESULT	hr = E_FAIL;
+	gunType	gt;
+	wchar_t	a_strTemp[8];
+	wchar_t	a_strTemp1[8];
+
+	gt = getGunType(index);
+
+	if (gt == gT_Non) {
+	} else if (gt == gT_MG) {
+		swprintf(a_strTemp, L" MG:");
+	} else if (gt == gT_CN) {
+		swprintf(a_strTemp, L" CN:");
+	} else if (gt == gT_MGCN) {
+		swprintf(a_strTemp, L" MGCN:");
+	else {
+		MessageBox(NULL, 
+  			L"Error: catGunStatToStr: illegal argument..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return;
+	}
+	if (m_damage.hit.gun[index] >= m_damage.tolerance[index]) {
+		swprintf(a_strTemp1, L" NG");
+	} else {
+		swprintf(a_strTemp1, L" OK");
+	}
+
+	hr = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp);
+	if (FAILED(hr)) {
+		MessageBox(NULL, 
+  			L"Error: catGunStatToStr: fail to cat..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return hr;
+	}
+	hr = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp1);
+	if (FAILED(hr)) {
+		MessageBox(NULL, 
+  			L"Error: catGunStatToStr: fail to cat str1..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return hr;
+	}
+	return hr;
+}
+
+HRESULT Aircraft::makeStrDamageGun(wchar_t *a_str)
+{
+	HRESULT	hr = E_FAIL;
+	wchar_t	a_tmp[64];
+	int	i;
+	gunType	gt;
+
+	if (a_str == NULL) {
+		hr = E_FAIL;
+		return hr;
+	}
+	swprintf(a_strTemp, L" gun = ");
+
+	for (i = 0; i < 8; i++) {
+		if (m_damage.tolerance.gun[i] <= 0) {
+		} else {
+			hr =catGunStatToStr(a_str, i);
+			if (FAILED(hr)) {
+				MessageBox(NULL, 
+  				L"Error: catGunStatToStr: fail to cat str1..\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+			}
+		}
+	}
+	swprintf(a_strTemp, L"\n");
+	hr = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp);
+	if (FAILED(hr)) {
+		return hr;
+	}
+
+	return hr;
+}
+
+
+void Aircraft::drawInfoDamage(
+		ID2D1RenderTarget *p_renderTgt,
+		ID2D1SolidColorBrush *pBrush,
+		IWICImagingFactory *p_factory,
+		IDWriteTextFormat *p_textFormat,
+		float offsetX,
+		float offsetY,
+		float width,
+		float height
+		)
+{
+	HRESULT hr;
+	D2D1_COLOR_F originalColor = pBrush->GetColor();
+
+	float	x = m_trayPixelX + offsetX;
+	float	y = m_trayPixelY + offsetY;
+
+	wchar_t str[256];
+	wchar_t strWandF[64];
+	wchar_t	strCockpit[64];
+	wchar_t strEngine[64];
+	wchar_t strGun[128];
+	wchar_t strFuel[64];
+
+	pBrush->SetColor(D2D1::ColorF(D2D1::ColorF::Black));
+
+	swprintf(strWandF, L" wing = %d / %d\n fuselage = %d / %d\n", 
+			m_damage.tolerance.wing - m_damage.hit.wing, 
+			m_damage.tolerance.wing,
+			m_damage.tolerance.fuselage - m_damage.hit.fuselage, 
+			m_damage.tolerance.fuselage
+	);
+
+	hr = makeStrDamageCockpit(strCockpit);
+	if (FAILED(hr)) {
+		MessageBox(NULL, 
+  			L"Error: drawInfoDamage: fail: cockpit..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return hr;
+	}
+
+	hr = makeStrDamageEngine(strEngine);
+	if (FAILED(hr)) {
+		MessageBox(NULL, 
+  			L"Error: drawInfoDamage: fail: engine..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return hr;
+	}
+
+	hr = makeStrDamageGun(strGun);
+	if (FAILED(hr)) {
+		MessageBox(NULL, 
+  			L"Error: drawInfoDamage: fail: gun..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return hr;
+	}
+
+	swprintf(strFuel, L" fuel = %d / %d\n", 
+			m_damage.tolerance.fuletank - m_damage.hit.fuletank, 
+			m_damage.tolerance.fuletank
+	);
+
+	hr = StringCchCat(str, STRSAFE_MAX_CCH, strWandF);
+	if (FAILED(hr)) {
+		return hr;
+	}
+	hr = StringCchCat(str, STRSAFE_MAX_CCH, strCockpit);
+	if (FAILED(hr)) {
+		return hr;
+	}
+	hr = StringCchCat(str, STRSAFE_MAX_CCH, strEngine);
+	if (FAILED(hr)) {
+		return hr;
+	}
+	hr = StringCchCat(str, STRSAFE_MAX_CCH, strGun);
+	if (FAILED(hr)) {
+		return hr;
+	}
+	hr = StringCchCat(str, STRSAFE_MAX_CCH, strFuel);
+	if (FAILED(hr)) {
+		return hr;
+	}
+	p_renderTgt->DrawText(
+		str,
+		wcslen(str) ,
+		p_textFormat,
+		D2D1::RectF(x, y, 
+			x + width, y + height),
+		pBrush
+	);
+	pBrush->SetColor(originalColor);
+	p_renderTgt->SetTransform(D2D1::Matrix3x2F::Identity());
+}
+
 
 
 void Aircraft::GetLimit(int acm, cmdForm *p_rtn)
@@ -1665,6 +1929,12 @@ void PlayerAirForce::cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn)
 			}
 		}
 		p_rtn[i].command = TAIL;
+	} else {
+		MessageBox(NULL, 
+			L"cmdToPlayerGetACIDs: illeagal form..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
 	}
 }
 
@@ -1710,8 +1980,10 @@ void PlayerAirForce::cmdToPlayerMODIFY_DAMAGE(cmdForm form, cmdForm *p_rtn)
 			cmdToPlayerMODIFY_DAMAGE_Ac(form, p_rtn, *itr);
 		}
 	} else {
-		if (form.selectedAircraft == (*itr)->m_id) {
-			cmdToPlayerMODIFY_DAMAGE_Ac(form, p_rtn, *itr);
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if (form.selectedAircraft == (*itr)->m_id) {
+				cmdToPlayerMODIFY_DAMAGE_Ac(form, p_rtn, *itr);
+			}
 		}
 	}
 }
@@ -1888,6 +2160,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 
 		case REPAINT:
 	        	InvalidateRect(m_hwnd, NULL, FALSE);
+			UpdateWindow(m_hwnd);
 			break;
 		case GET_LIMIT:
 			if (form.selectedAircraft == SELECTED_AC) {
@@ -1990,7 +2263,8 @@ HRESULT PlayerAirForce::CreateDWriteTextFormat()
     if (SUCCEEDED(hr))
     {
         // Center the text horizontally and vertically.
-        mPtrTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+//        mPtrTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+        mPtrTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 
         mPtrTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
        
@@ -2006,11 +2280,9 @@ void PlayerAirForce::WhereToDraw(float *x, float *y)
 	const float pitchX = 0.0f;
 	const float pitchY = 60.0f;
 
-	*x = drawX + pitchX;
-	*y = drawY + pitchY;
+	m_drawOriginX = *x = m_drawOriginX + pitchX;
+	m_drawOriginY = *y = m_drawOriginY + pitchY;
 
-	drawX = drawX + pitchX;
-	drawY = drawY + pitchY;
 }
 
 void PlayerAirForce::OnPaint()
@@ -2048,7 +2320,18 @@ void PlayerAirForce::OnPaint()
 			pRenderTarget,
 			pBrush,
 			m_p_imagingFactory,
+			mPtrTextFormat,
 			40.0f,		// offsetX from m_trayPixelX
+			0.0f,		// offsetY from m_trayPixelY
+			180.0f,		// width
+			80.0f		// height
+		);
+		(*itr)->drawInfoDamage(
+			pRenderTarget,
+			pBrush,
+			m_p_imagingFactory,
+			mPtrTextFormat,
+			200.0f,		// offsetX from m_trayPixelX
 			0.0f,		// offsetY from m_trayPixelY
 			180.0f,		// width
 			80.0f		// height
@@ -6363,19 +6646,15 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 			cmdGetDispatched(p_rtnForms);
 			break;
 
-		case REPAINT:
+		// PlayerID  = ALL_PLAYERS / SELECTED_PLAYER 
+		// and the result is returned
 		case GET_AC:
 		case GET_LIMIT:
 		case GET_HIT:
 		case SET_ACSTAT:
 		case GET_MANUVABLE:
-		case APPEND_MANUV:
-		case DELETE_MANUV:
 		case GET_FIRE_RANGE:
 		case GET_ACID:
-		case USE_AMMO:
-		case MODIFY_DAMAGE:
-		case UPDATE_ACSTAT:
 			if (form.playerID == SELECTED_PLAYER) {
 				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
 			} else if (form.playerID == ALL_PLAYERS) {
@@ -6396,6 +6675,31 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 				   );
 			}
 			break;
+
+		// PlayerID  = ALL_PLAYERS / SELECTED_PLAYER 
+		// and the result is not returned
+		case REPAINT:
+		case APPEND_MANUV:
+		case DELETE_MANUV:
+		case USE_AMMO:
+		case UPDATE_ACSTAT:
+		case MODIFY_DAMAGE:
+			if (form.playerID == SELECTED_PLAYER) {
+				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
+			} else if (form.playerID == ALL_PLAYERS) {
+				for (itrPlayer = mPlayers.begin(); 
+					itrPlayer != mPlayers.end(); itrPlayer++) {
+						(*itrPlayer)->cmdToPlayer(cmd, form, rtn);
+				}
+			} else {
+				MessageBox(NULL, 
+			           L"ERROR: illeagal form..\n",
+				   NULL,
+				   MB_OKCANCEL | MB_ICONSTOP
+				   );
+			}
+			break;
+
 
 		case SET_AC_SELECTED:
 			if (  (form.playerID == ALL_PLAYERS) 
@@ -6547,7 +6851,7 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 						0,			//dwExStyle
 						CW_USEDEFAULT,		//x
 						CW_USEDEFAULT,		//y
-						100,		//nWidth
+						400,		//nWidth
 						800,		//nHeight
 						0,			//hWndParent
 						0			//hMenu
@@ -7125,14 +7429,14 @@ hitResult GameAirForce::resolveFire(int index)
 
 	lvi.mask =LVIF_TEXT;
 	lvi.iItem = index;
-	lvi.iSubItem = 0;
+	lvi.iSubItem = 0;	// attacker name
 	lvi.pszText = str;
 	lvi.cchTextMax = 32;
 	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
 
 	lvi.mask =LVIF_TEXT;
 	lvi.iItem = index;
-	lvi.iSubItem = 2;
+	lvi.iSubItem = 2;	// gun factor
 	lvi.pszText = str;
 	lvi.cchTextMax = 32;
 	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
@@ -7140,7 +7444,7 @@ hitResult GameAirForce::resolveFire(int index)
 
 	lvi.mask =LVIF_TEXT;
 	lvi.iItem = index;
-	lvi.iSubItem = 3;
+	lvi.iSubItem = 3;	// distance
 	lvi.pszText = str;
 	lvi.cchTextMax = 32;
 	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
@@ -7148,7 +7452,7 @@ hitResult GameAirForce::resolveFire(int index)
 
 	lvi.mask =LVIF_TEXT;
 	lvi.iItem = index;
-	lvi.iSubItem = 4;
+	lvi.iSubItem = 4;	// attenuation
 	lvi.pszText = str;
 	lvi.cchTextMax = 32;
 	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
@@ -7156,7 +7460,7 @@ hitResult GameAirForce::resolveFire(int index)
 
 	lvi.mask =LVIF_TEXT;
 	lvi.iItem = index;
-	lvi.iSubItem = 5;
+	lvi.iSubItem = 5;	// modifier
 	lvi.pszText = str;
 	lvi.cchTextMax = 32;
 	success = ListView_GetItem(m_hwndLV_FiringTable, &lvi);
@@ -7254,14 +7558,14 @@ void GameAirForce::setFireTableResult(int index, hitResult hr)
 	lvi.mask = LVIF_TEXT;
 	lvi.pszText = str;
 	lvi.iItem = index;
-	lvi.iSubItem = 7;
+	lvi.iSubItem = 7;	// result
 	success = ListView_SetItem(m_hwndLV_FiringTable, &lvi);
 
 	wsprintf(str, L"%d", hr.die);
 	lvi.mask = LVIF_TEXT;
 	lvi.pszText = str;
 	lvi.iItem = index;
-	lvi.iSubItem = 6;
+	lvi.iSubItem = 6;	// die
 	success = ListView_SetItem(m_hwndLV_FiringTable, &lvi);
 
 }
@@ -7282,7 +7586,6 @@ void GameAirForce::resolveFires()
 BOOL GameAirForce::addResolvedFireToFE(wchar_t *nameAttacker, int attenuation, int die, wchar_t *result)
 {
 	list<std::shared_ptr<firingEntry>>::iterator itrFiringEnt;
-	firingEntry	fe;
 	static int	i = 0;
 	int		acid;
 	cmdForm		form;
@@ -7292,6 +7595,7 @@ BOOL GameAirForce::addResolvedFireToFE(wchar_t *nameAttacker, int attenuation, i
 	//Syntax:  wcscpy(p_destination, p_source)
 	wcscpy(form.aircraftName, nameAttacker);
 	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = ALL_AC;
 	cmdToGame(GET_ACID, form, rtn);
 	if (rtn[0].command == TAIL) {
 		return false;
@@ -7319,7 +7623,7 @@ BOOL GameAirForce::reflectResolvedFireToFE(int index)
 	LVITEM		lvi;
 	static wchar_t  nameAttacker[64];
 	static wchar_t 	result[32];
-	int attenuation, modifier, die;
+	int attenuation, die;
 
 	static wchar_t  str[32];
 	BOOL		success = false;
@@ -7385,13 +7689,12 @@ gunType GameAirForce::getGunTypeFromACM(int acmID, int gunPosition)
 {
 	int	i;
 	int	gType = 0;
-	int	tmp;
 	BOOL	mg = false;
 	BOOL	cn = false;
 
 	for (i = 0; i < 8; i++) {
 		if (aircraftModels[acmID].gunPosition[i] == gunPosition) {
-			switch ((int)aircraftModels[acmID].gunType) {
+			switch ((int)(aircraftModels[acmID].gunType)) {
 				case (int)gT_Non:
 					break;
 				case (int)gT_MG:
@@ -7494,6 +7797,7 @@ void GameAirForce::cmdToGameUSE_AMMO(firingEntry fe, int gunType)
 
 	form.command = USE_AMMO;
 	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = fe.acIDattacker;
 
 	switch (gunType) {
 		case gT_MG:
@@ -7753,7 +8057,7 @@ void GameAirForce::setFormDamageFromFE(cmdForm *p_form, firingEntry fe)
 	StringCchCopyW(buf, STRSAFE_MAX_CCH, fe.result);
 
 	wchar_t ch;
-	wchar_t p_ch = &ch;
+	wchar_t *p_ch = &ch;
 
 	int 	i;
 
@@ -7770,9 +8074,12 @@ void GameAirForce::setFormDamageFromFE(cmdForm *p_form, firingEntry fe)
 	}
 	p_form->dmg.hit.fueltank = 0;
 
-	while ( ; buf[0] != '\0'; ) {
-		p_ch = buf.Substring(0, 1);
-		buf = buf.Substring(1);
+	while (buf[0] != '\0') {
+		ch = buf[0];
+		for (i = 0; buf[i+1] != L'\0'; i++) {
+			buf[i] = buf[i+1];
+		}
+		buf[i] = L'\0';
 		modifyFormDamageFromDamageChr(p_form, fe, ch);
 	}
 }
@@ -7819,9 +8126,15 @@ void GameAirForce::updateAcStats()
 void GameAirForce::onExitGameModeFire()
 {
 	resolveFires();
+	reflectResolvedFireToFEs();
 	reflectFiresToAs();
 	reflectFiresToTs();
 	updateAcStats();
+
+	cmdForm		form;
+	form.command = REPAINT;
+	form.playerID = ALL_PLAYERS;
+	cmdToGame(REPAINT, form, NULL);
 }
 
 void GameAirForce::OnButtonProceed()
@@ -8497,7 +8810,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR pCmdLine, int nCmdShow
 
 	initRand();
 
-	if (!win.Create(L"Circle", WS_OVERLAPPEDWINDOW))
+	if (!win.Create(L"Air Force", WS_OVERLAPPEDWINDOW))
 	{
 		return 0;
 	}

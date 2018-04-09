@@ -714,15 +714,12 @@ protected:
 	int	m_pilotExperience;
 	int 	m_maxDiveSpeed;
   //------------------- protected member functions ---------------------
-  	void drawInfoName(
-		ID2D1RenderTarget *p_renderTgt,
-		ID2D1SolidColorBrush *pBrush,
-		IWICImagingFactory *p_factory,
-		float offsetX,
-		float offsetY,
-		float width,
-		float height
-		);
+	HRESULT makeStrDamageCockpit(wchar_t *a_str);
+	HRESULT makeStrDamageEngine(wchar_t *a_str);
+	gunType getGunType(int index);
+	HRESULT catGunStatToStr(wchar_t *a_str, int index);
+	HRESULT makeStrDamageGun(wchar_t *a_str);
+
 	int GetAltTblIndex();
 	float GetMaxAltChgClimb(int spdIncIndex);
 	float GetMaxAltChgDive(int spdIncIndex);
@@ -852,6 +849,16 @@ public:
 		float width,
 		float height,
 		float heading
+		);
+  	void drawInfoName(
+		ID2D1RenderTarget *p_renderTgt,
+		ID2D1SolidColorBrush *pBrush,
+		IWICImagingFactory *p_factory,
+		IDWriteTextFormat *p_textFormat,
+		float offsetX,
+		float offsetY,
+		float width,
+		float height
 		);
 
 	void Aircraft::GetLimit(int acm, cmdForm *p_rtn);
