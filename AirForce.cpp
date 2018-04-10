@@ -1661,6 +1661,7 @@ void PlayerAirForce::cmdToPlayerGetManuvable(
 	(*itr)->modifyManeuverableByPilot(&manuv);
 	p_rtn->manuvable = manuv;
 
+	p_rtn->aircraftID = (*itr)->m_id;
 	p_rtn->virCorX = (*itr)->m_virCorX;
 	p_rtn->virCorY = (*itr)->m_virCorY;
 	p_rtn->heading = (*itr)->m_heading;
@@ -2526,6 +2527,26 @@ void MapAirForce::SetMapStat(MapStat stat)
 	m_mapStat = stat;
 }
 
+
+
+
+void MapAirForce::finalizeAllAcManuv()
+{
+	int remainingMP =  parseManuv(rtn);
+	modifyManeuverableByParsedManuv(rtn);
+}
+
+void MapAirForce::cmdToMap(int cmd, cmdForm form, cmdForm *p_rtn)
+{
+	switch (cmd) {
+		case FINALIZE_MANUV:
+			finalizeManuv(form);
+			break;
+		default:
+			break;
+	}
+}
+
 void MapAirForce::parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv)
 {
 	if ((manuv == MANUV_SR) || (manuv == MANUV_RR)) {
@@ -3045,6 +3066,14 @@ void MapAirForce::parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef)
 
 int MapAirForce::parseManuv(cmdForm *p_form) 
 {
+// REQUIREMENT:
+// 	*p_form must be a returned form of GET_MANUVABLE command
+// RETURN:
+// 	remaining MP(Movement point)
+// FUNCTION:
+// 	modify aircraft's attributes such as form.heading/speed/alt
+// 	depending on form.manuv[]
+//
 	int mp = p_form->speed;
 	int i;
 
@@ -8155,8 +8184,38 @@ void GameAirForce::onExitGameModeFire()
 	cmdToGame(REPAINT, form, NULL);
 }
 
-void GameAirForce::onExitGameModeFire()
+void GameAirForce::finalizeAcManuv(cmdForm form)
 {
+	list<shared_ptr<MapAirForce>>::iterator	itr;
+
+	form.command = FINALIZE_MANUV;
+
+	for (itr = m_Maps.begin(); 
+  	     itr != m_Maps.end(); 
+	     itr ++) {
+		(*itr)->cmdToMap(FINALIZE_MANUV, form, NULL);
+	}
+}
+
+void GameAirForce::finalizeAcManuvs()
+{
+	cmdForm 	form;
+	cmdForm 	rtn[MAX_AC_CNT + MAX_PLAYER_CNT];
+
+	form.command = GET_MANUVABLE;
+	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = ALL_AC;
+	cmdToGame(GET_MANUVABLE, form, rtn);
+
+	int	i = 0;
+	while (rtn[i].command != TAIL) {
+		finalizeAcManuv(rtn[i]);
+	}
+}
+
+void GameAirForce::onExitGameModePlot()
+{
+	finalizeAcManuvs();
 }
 
 void GameAirForce::OnButtonProceed()

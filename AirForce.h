@@ -26,6 +26,9 @@
 #define MAX_ALTINDEX 16
 #define MAX_SPDINDEX 16
 
+#define MAX_AC_CNT	32
+#define MAX_PLAYER_CNT	4
+
 using namespace std;
 
 LPCTSTR liststrNationality[]
@@ -176,6 +179,8 @@ enum CommandToX {
 	USE_AMMO		= 18,
 	MODIFY_DAMAGE		= 19,
 	UPDATE_ACSTAT		= 20,
+// cmdToMap commands
+	FINALIZE_MANUV		= 1001,
 };
 
 enum attackSide {
