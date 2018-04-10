@@ -89,7 +89,7 @@ struct aircraftModel
 	int		speedChgTbl[2][MAX_ALTINDEX];
 	aircraftCompo	damageTolerance;
 	weapon		ammoPayload;
-	int		gunType[8]; //leftx3 centerx1 rightx3 Fx1
+	gunType		gunType[8]; //leftx3 centerx1 rightx3 Fx1
 	int		gunPosition[8];
 	int		gunRange[8];
 	int		gunPower[8];
@@ -860,6 +860,16 @@ public:
 		float width,
 		float height
 		);
+	HRESULT drawInfoDamage(
+		ID2D1RenderTarget *p_renderTgt,
+		ID2D1SolidColorBrush *pBrush,
+		IWICImagingFactory *p_factory,
+		IDWriteTextFormat *p_textFormat,
+		float offsetX,
+		float offsetY,
+		float width,
+		float height
+		);
 
 	void Aircraft::GetLimit(int acm, cmdForm *p_rtn);
 	spdIncTblEntry ReferSpeedIncTbl();
@@ -1020,6 +1030,7 @@ protected:
 
 	void updateAcStats();
 	void onExitGameModeFire();
+	void onExitGameModePlot();
 	void OnButtonProceed();
 	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
 	int  insertFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index);

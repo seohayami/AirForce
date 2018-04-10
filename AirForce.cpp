@@ -346,7 +346,8 @@ HRESULT Aircraft::Draw(
 	);
 
 	if ((m_stat == DISPATCHED) 
-	||  (m_stat == DEPLOYED)) {
+	||  (m_stat == DEPLOYED)
+	||  (m_stat == SHOTDOWN)) {
 		opacity = 0.2f;
 	} else {
 		opacity = 1.0f;
@@ -430,21 +431,21 @@ void Aircraft::drawInfoName(
 HRESULT Aircraft::makeStrDamageCockpit(wchar_t *a_str)
 {
 	HRESULT	result = E_FAIL;
-	wchar_t	a_tmp[32];
+	wchar_t	a_strTemp[32];
 
 	if (a_str == NULL) {
 		result = E_FAIL;
 		return result;
 	}
-	swprintf(a_strTemp, L" cockpit = %d / %d", 
+	StringCchPrintf(a_str, STRSAFE_MAX_CCH, L" cockpit = %d / %d", 
 		m_damage.tolerance.cockpit[0] - m_damage.hit.cockpit[0], 
 		m_damage.tolerance.cockpit[0]
 	);
 
 	if (m_damage.tolerance.cockpit[1] <= 0) {
-		swprintf(a_strTemp, L"\n" );
+		StringCchPrintf(a_strTemp, STRSAFE_MAX_CCH, L"\n" );
 	} else {
-		swprintf(a_strTemp, L", %d / %d\n", 
+		StringCchPrintf(a_strTemp, STRSAFE_MAX_CCH, L", %d / %d\n", 
 			m_damage.tolerance.cockpit[1] - m_damage.hit.cockpit[1], 
 			m_damage.tolerance.cockpit[1]
 		);
@@ -455,22 +456,23 @@ HRESULT Aircraft::makeStrDamageCockpit(wchar_t *a_str)
 HRESULT Aircraft::makeStrDamageEngine(wchar_t *a_str)
 {
 	HRESULT	hr = E_FAIL;
-	wchar_t	a_tmp[32];
+	wchar_t	a_strTemp[32];
 	int	i;
 
 	if (a_str == NULL) {
 		hr = E_FAIL;
 		return hr;
 	}
-	swprintf(a_strTemp, L" engine = %d / %d", 
+	StringCchPrintf(a_str, STRSAFE_MAX_CCH, L" engine = %d / %d", 
 		m_damage.tolerance.engine[0] - m_damage.hit.engine[0], 
 		m_damage.tolerance.engine[0]
 	);
 
 	for (i = 1; i < 4; i++) {
 		if (m_damage.tolerance.engine[i] <= 0) {
+			StringCchPrintf(a_strTemp, STRSAFE_MAX_CCH, L"");
 		} else {
-			swprintf(a_strTemp, L", %d / %d", 
+			StringCchPrintf(a_strTemp, STRSAFE_MAX_CCH, L", %d / %d", 
 				m_damage.tolerance.cockpit[i] - m_damage.hit.cockpit[i], 
 				m_damage.tolerance.cockpit[i]
 			);
@@ -480,8 +482,8 @@ HRESULT Aircraft::makeStrDamageEngine(wchar_t *a_str)
 			return hr;
 		}
 	}
-	swprintf(a_strTemp, L"\n");
-	result = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp);
+	StringCchPrintf(a_strTemp, STRSAFE_MAX_CCH, L"\n");
+	hr = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp);
 	if (FAILED(hr)) {
 		return hr;
 	}
@@ -520,15 +522,15 @@ HRESULT Aircraft::catGunStatToStr(wchar_t *a_str, int index)
 		swprintf(a_strTemp, L" CN:");
 	} else if (gt == gT_MGCN) {
 		swprintf(a_strTemp, L" MGCN:");
-	else {
+	} else {
 		MessageBox(NULL, 
   			L"Error: catGunStatToStr: illegal argument..\n",
 			NULL,
 			MB_OKCANCEL | MB_ICONSTOP
 		);
-		return;
+		return hr;
 	}
-	if (m_damage.hit.gun[index] >= m_damage.tolerance[index]) {
+	if (m_damage.hit.gun[index] >= m_damage.tolerance.gun[index]) {
 		swprintf(a_strTemp1, L" NG");
 	} else {
 		swprintf(a_strTemp1, L" OK");
@@ -558,7 +560,7 @@ HRESULT Aircraft::catGunStatToStr(wchar_t *a_str, int index)
 HRESULT Aircraft::makeStrDamageGun(wchar_t *a_str)
 {
 	HRESULT	hr = E_FAIL;
-	wchar_t	a_tmp[64];
+	wchar_t	a_strTemp[64] = L"\0";
 	int	i;
 	gunType	gt;
 
@@ -566,22 +568,22 @@ HRESULT Aircraft::makeStrDamageGun(wchar_t *a_str)
 		hr = E_FAIL;
 		return hr;
 	}
-	swprintf(a_strTemp, L" gun = ");
+	swprintf(a_str, L" gun = ");
 
 	for (i = 0; i < 8; i++) {
 		if (m_damage.tolerance.gun[i] <= 0) {
 		} else {
-			hr =catGunStatToStr(a_str, i);
+			hr =catGunStatToStr(a_strTemp, i);
 			if (FAILED(hr)) {
 				MessageBox(NULL, 
-  				L"Error: catGunStatToStr: fail to cat str1..\n",
+  				L"Error: makeStrDamageGunr: fail to cat..\n",
 				NULL,
 				MB_OKCANCEL | MB_ICONSTOP
 			);
 			}
 		}
 	}
-	swprintf(a_strTemp, L"\n");
+	StringCchCat(a_strTemp, STRSAFE_MAX_CCH, L"\n");
 	hr = StringCchCat(a_str, STRSAFE_MAX_CCH, a_strTemp);
 	if (FAILED(hr)) {
 		return hr;
@@ -591,7 +593,7 @@ HRESULT Aircraft::makeStrDamageGun(wchar_t *a_str)
 }
 
 
-void Aircraft::drawInfoDamage(
+HRESULT Aircraft::drawInfoDamage(
 		ID2D1RenderTarget *p_renderTgt,
 		ID2D1SolidColorBrush *pBrush,
 		IWICImagingFactory *p_factory,
@@ -655,11 +657,11 @@ void Aircraft::drawInfoDamage(
 	}
 
 	swprintf(strFuel, L" fuel = %d / %d\n", 
-			m_damage.tolerance.fuletank - m_damage.hit.fuletank, 
-			m_damage.tolerance.fuletank
+			m_damage.tolerance.fueltank - m_damage.hit.fueltank, 
+			m_damage.tolerance.fueltank
 	);
 
-	hr = StringCchCat(str, STRSAFE_MAX_CCH, strWandF);
+	hr = StringCchCopy(str, STRSAFE_MAX_CCH, strWandF);
 	if (FAILED(hr)) {
 		return hr;
 	}
@@ -2268,7 +2270,8 @@ HRESULT PlayerAirForce::CreateDWriteTextFormat()
 //        mPtrTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
         mPtrTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
 
-        mPtrTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+//        mPtrTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        mPtrTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
        
 
     }
@@ -2280,7 +2283,7 @@ HRESULT PlayerAirForce::CreateDWriteTextFormat()
 void PlayerAirForce::WhereToDraw(float *x, float *y)
 {
 	const float pitchX = 0.0f;
-	const float pitchY = 60.0f;
+	const float pitchY = 70.0f;
 
 	m_drawOriginX = *x = m_drawOriginX + pitchX;
 	m_drawOriginY = *y = m_drawOriginY + pitchY;
@@ -2328,12 +2331,12 @@ void PlayerAirForce::OnPaint()
 			180.0f,		// width
 			80.0f		// height
 		);
-		(*itr)->drawInfoDamage(
+		hr = (*itr)->drawInfoDamage(
 			pRenderTarget,
 			pBrush,
 			m_p_imagingFactory,
 			mPtrTextFormat,
-			200.0f,		// offsetX from m_trayPixelX
+			250.0f,		// offsetX from m_trayPixelX
 			0.0f,		// offsetY from m_trayPixelY
 			180.0f,		// width
 			80.0f		// height
@@ -3652,7 +3655,11 @@ HRESULT MapAirForce::DrawPiece(
 		center.x + unitAF * 1.5f,
 		center.y + root3AF / 2.0f
 	);
-	wsprintf(tmpBitmapFileName, L"%s", aircraftModels[form.aircraftModel].bmpFileName);
+	if (form.acStatus == SHOTDOWN) {
+		wsprintf(tmpBitmapFileName, L"bitmapFiles\\shotdown.png");
+	} else {
+		wsprintf(tmpBitmapFileName, L"%s", aircraftModels[form.aircraftModel].bmpFileName);
+	}
 	LPCWSTR bitmapFileName = tmpBitmapFileName;
 	hr = LoadBitmapFromFile(
 //		p_renderTgt,
@@ -4497,7 +4504,7 @@ void MapAirForce::HandleDlgDeploySetAcstat(HWND hDlgWnd)
 
 	cmdForm form;
 	form.command = SET_ACSTAT;
-	form.acStatus = DEPLOYED;
+	form.acStatus = DISPATCHED;
 	form.heading = (float) heading;
 	form.speed = (int) speed;
 	form.alt = alt;
@@ -5172,9 +5179,11 @@ void MapAirForce::OnLButtonDown(int pixelX, int pixelY, DWORD flags)
 				SetCapture(m_hwnd);
 			}
 		} 
-		if (stackNum > 0 ) {
-			OnLButtonDownGM_Fire(pixelX, pixelY, flags);
-			InvalidateRect(m_hwnd, NULL, FALSE);
+		if (gameMode == GM_FIRE) {
+			if (stackNum > 0 ) {
+				OnLButtonDownGM_Fire(pixelX, pixelY, flags);
+				InvalidateRect(m_hwnd, NULL, FALSE);
+			}
 		}
 	}
 	if ((flags & MK_LBUTTON) && (flags &  MK_SHIFT)) {
@@ -5715,6 +5724,7 @@ void MapAirForce::OnLButtonUp(int pixelX, int pixelY, DWORD flags)
 		rtn[0].virCorY = m_virCorSelectedY;
 		((GameAirForce*)mp_ownerGame)->cmdToGame(DISPATCH, rtn[0], NULL);
 //        	InvalidateRect(m_hwnd, NULL, FALSE);
+		m_mapStat == NOT_SELECTED;
 	}
 
 	if (m_mapStat == MAP_FIRE_AIM) {
@@ -5727,7 +5737,7 @@ void MapAirForce::OnLButtonUp(int pixelX, int pixelY, DWORD flags)
 			UpdateWindow(m_hwnd);
 		}
 		ReleaseCapture();
-
+		m_mapStat == NOT_SELECTED;
 	}
       	InvalidateRect(m_hwnd, NULL, FALSE);
 	UpdateWindow(m_hwnd);
@@ -6016,6 +6026,10 @@ int MapAirForce::ShowManuvMenu(int pixelX, int pixelY, DWORD flags, cmdForm *p_f
 
 int MapAirForce::isHexReachableFwdPath(ResultHitTestHex *p_hex, cmdForm *p_form, int remainingMP)
 {
+//	Return:
+//		number of straight move to reach the *p_hex.
+//		if -1, then *p_hex is not reachable
+//
 	int int_heading = (int)(p_form->heading);
 	int i;
 	int reachable = -1;
@@ -6855,7 +6869,7 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 						0,			//dwExStyle
 						CW_USEDEFAULT,		//x
 						CW_USEDEFAULT,		//y
-						400,		//nWidth
+						500,		//nWidth
 						800,		//nHeight
 						0,			//hWndParent
 						0			//hMenu
@@ -8141,6 +8155,10 @@ void GameAirForce::onExitGameModeFire()
 	cmdToGame(REPAINT, form, NULL);
 }
 
+void GameAirForce::onExitGameModeFire()
+{
+}
+
 void GameAirForce::OnButtonProceed()
 {
 	switch (m_gameMode) {
@@ -8164,6 +8182,7 @@ void GameAirForce::OnButtonProceed()
 			m_gameMode = GM_PLOT_MOVE;
 			break;
 		case GM_PLOT_MOVE:
+			onExitGameModePlot();
 			m_gameMode = GM_DET_STAT;
 			break;
 		case GM_DET_STAT:
