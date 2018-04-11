@@ -45,7 +45,7 @@ enum spdIncTblEntry {
 	MANV = 1, 
 	LEVL = 2, 
 	DIVE = 3, 
-	NA = -1
+	NA = -1		// more than DIVE speed
 };
 
 enum gunType {
@@ -181,6 +181,7 @@ enum CommandToX {
 	UPDATE_ACSTAT		= 20,
 // cmdToMap commands
 	FINALIZE_MANUV		= 1001,
+	REFLECT_ERASE_PLOT	= 1002,
 };
 
 enum attackSide {
@@ -343,6 +344,7 @@ struct cmdForm {
 	float		alt;
 	int		bank;
 	int		nose;
+	bool		loaded;
 	int 		manuv[80];
 	int		maxSpeedAtAnyAlt;
 	float		maxAlt;
@@ -356,6 +358,7 @@ struct cmdForm {
 	firingEntry	firingEnt;
 	int		silhouette;
 	int		fireAccuracy;
+	Aircraft	*p_aircraft;
 };
 
 struct ammo {
@@ -499,6 +502,9 @@ protected:
 	int			m_virCorX_target, m_virCorY_target;
 
   //------------------- protected member functions ---------------------
+	int checkIfNeedBreaks(cmdForm form);
+  	void finalizeManuvByAcID(cmdForm form);
+  	void reflectErasePlotByAcID(cmdForm form);
 	void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv);
 	void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv);
 	void parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv);
@@ -626,6 +632,7 @@ public:
 	cmdForm			m_formFromMap;
 
   //------------------- public member functions ---------------------
+  	void cmdToMap(int cmd, cmdForm form, cmdForm *p_rtn);
 	int getClock(cmdForm formS, cmdForm formD);
 	MapAirForce::MapAirForce() {
 		mPtrDWriteFactory = NULL;
@@ -1035,7 +1042,12 @@ protected:
 
 	void updateAcStats();
 	void onExitGameModeFire();
+	void finalizeAcManuv(cmdForm form);
+	void finalizeAcManuvs();
 	void onExitGameModePlot();
+	void onEnterGameModeMove();
+	void reflectAndErasePlot(cmdForm form);
+	void reflectAndErasePlots();	
 	void OnButtonProceed();
 	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
 	int  insertFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index);

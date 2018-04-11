@@ -1645,10 +1645,18 @@ void PlayerAirForce::cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn)
 			(*itr)->m_nose = form.nose;
 		}
 	} else {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.aircraftID) {
+				(*itr)->m_stat = form.acStatus;
+				(*itr)->m_heading = form.heading;
+				(*itr)->m_speed = form.speed;
+				(*itr)->m_alt = form.alt;
+				(*itr)->m_bank = form.bank;
+				(*itr)->m_nose = form.nose;
+			}
+		}
 	}
-
 }
-
 
 void PlayerAirForce::cmdToPlayerGetManuvable(
 	cmdForm form, 
@@ -1722,6 +1730,12 @@ void PlayerAirForce::cmdToPlayerAppendManuvs(cmdForm form, cmdForm *p_rtn)
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			cmdToPlayerAppendManuv(form, itr);
+		}
+	} else {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.aircraftID) {
+				cmdToPlayerAppendManuv(form, itr);
+			}
 		}
 	}
 }
@@ -1870,6 +1884,7 @@ void PlayerAirForce::cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn)
 				p_rtn[i].alt = (*itr)->m_alt;
 				p_rtn[i].bank = (*itr)->m_bank;
 				p_rtn[i].nose = (*itr)->m_nose;
+				p_rtn[i].loaded = (*itr)->m_loaded;
 				int j;
 				for (j = 0; j < 80; j++) {
 					p_rtn[i].manuv[j] = (*itr)->m_manuv[j];
@@ -1879,6 +1894,7 @@ void PlayerAirForce::cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn)
 				p_rtn[i].fireAccuracy 
 					= aircraftModels[(*itr)->mAircraftModel].fireAccuracy;
 				p_rtn[i].dmg = (*itr)->m_damage;
+				p_rtn[i].p_aircraft = (*itr);
 				i++;
 			}
 		}
@@ -2102,6 +2118,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 				p_rtn[i].alt = (*m_ItrSelectedAircraft)->m_alt;
 				p_rtn[i].bank = (*m_ItrSelectedAircraft)->m_bank;
 				p_rtn[i].nose = (*m_ItrSelectedAircraft)->m_nose;
+				p_rtn[i].loaded = (*m_ItrSelectedAircraft)->m_loaded;
 				int j;
 				for (j = 0; j < 80; j++) {
 					p_rtn[i].manuv[j] = (*m_ItrSelectedAircraft)->m_manuv[j];
@@ -2111,6 +2128,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 				p_rtn[i].fireAccuracy 
 					= aircraftModels[(*m_ItrSelectedAircraft)->mAircraftModel].fireAccuracy;
 				p_rtn[i].dmg = (*m_ItrSelectedAircraft)->m_damage;
+				p_rtn[i].p_aircraft = (*m_ItrSelectedAircraft);
 				i++;
 				p_rtn[i].command = TAIL;
 				
@@ -2144,6 +2162,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 						p_rtn[i].alt = (*itr)->m_alt;
 						p_rtn[i].bank = (*itr)->m_bank;
 						p_rtn[i].nose = (*itr)->m_nose;
+						p_rtn[i].loaded = (*itr)->m_loaded;
 						int j;
 						for (j = 0; j < 80; j++) {
 							p_rtn[i].manuv[j] = (*itr)->m_manuv[j];
@@ -2153,6 +2172,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 						p_rtn[i].fireAccuracy 
 							= aircraftModels[(*itr)->mAircraftModel].fireAccuracy;
 						p_rtn[i].dmg = (*itr)->m_damage;
+						p_rtn[i].p_aircraft = (*itr);
 	
 						i++;
 					}
@@ -2527,20 +2547,125 @@ void MapAirForce::SetMapStat(MapStat stat)
 	m_mapStat = stat;
 }
 
-
-
-
-void MapAirForce::finalizeAllAcManuv()
+int MapAirForce::checkIfNeedBreaks(cmdForm form)
 {
-	int remainingMP =  parseManuv(rtn);
-	modifyManeuverableByParsedManuv(rtn);
+// Return: 
+// 	number of MANUV_BKs which can be applied to avoid over speed
+// Requirement:
+// 	argument "form" must be returnd form of GET_MANUVALBLE
+//
+	int	cnt = 0;
+	cmdForm	form0;
+	cmdForm a_rtn[2];
+	form0.command = GET_AC;
+	form0.PlayerID = ALL_PLAYERS;
+	form0.selectedAircraft = form.aircraftID;
+	if (mp_ownerGame) {
+		((GameAirForce*)mp_ownerGame)->cmdToGame(GET_AC, form0, a_rtn);
+	}
+	if (a_rtn[0].command == TAIL) {
+		MessageBox(NULL, 
+			L"MapAirForce::checkIfNeedBreaks: fail to GET_AC..\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+		return;	
+	}
+	spdIncTblEntry	speedCat;
+	speedCat = (a_rtn[0].p_aircraft)->ReferSpeedIncTbl();
+	if (speedCat = NA) {
+		cnt = form.manuvable.maxBreak;
+	}
+
+	return cnt;
+}
+
+
+void MapAirForce::finalizeManuvByAcID(cmdForm form)
+{
+// Function:
+// 	append straight move to the specified aircraft's manuv
+// 	so that it exhausts all move points
+// 	if its speed is more than dive speed then
+// 	apped the possible breaks, too.
+// Requirement
+// 	argument "form" must be returned form of GET_MANUVABLE
+//
+	int remainingMP =  parseManuv(&form);
+	modifyManeuverableByParsedManuv(&form);
+
+	int cnt = checkIfNeedBreaks(form);
+
+	if (remainingMP > 0) {
+		MessageBox(NULL, 
+	           L"Over Dive speed!! Applicable Breaks are applied..\n",
+		   NULL,
+		   MB_ICONEXCLAMATION
+		);
+
+	}
+	if (cnt > 0) {
+		MessageBox(NULL, 
+			L"Move Points Left!! forwad moves added..\n",
+			NULL,
+			MB_ICONEXCLAMATION
+		);
+	}
+
+	int	i;
+	cmdForm	form1;
+	form1.command = APPEND_MANUV;
+	form1.PlayerID = ALL_PLAYERS;
+	form1.selectedAircraft = form.aircraftID;
+	for (i = 0; i < cnt; i++) {
+		form1.manuv[i] = MANUV_BK;
+	}
+	form1.manuv[i++] = remainingMP;
+	form1.manuv[i++] = MANUV_EN;
+
+	if (mp_ownerGame) {
+		((GameAirForce*)mp_ownerGame)->cmdToGame(APPEND_MANUV, form1, NULL);
+	}
+}
+
+void MapAirForce::reflectErasePlotByAcID(cmdForm form)
+{
+// Function:
+// 	form.manuv[] is parsed
+// 	and result of aircraft attributes such as speed/alt etc
+// 	is set to member variables to the aircraft.
+// 	After that, manuv[] is cleared.
+// Requirement
+// 	argument "form" must be returned form of GET_MANUVABLE
+//
+	int remainingMP =  parseManuv(&form);
+	modifyManeuverableByParsedManuv(&form);
+
+	cmdForm		f;
+	f.command = SET_ACSTAT;
+	f.playerID = ALL_PLAYERS;
+	f.selectedAircraft = f.aircraftID;
+	f.heading = form.heading;
+	f.speed = form.speed;
+	f.alt = form.alt;
+	f.bank = form.bank;
+	f.nose = form.nose;
+
+	if (mp_ownerGame) {
+		((GameAirForce*)mp_ownerGame)->cmdToGame(SET_ACSTAT, f, NULL);
+	}
+	// coding incomplete here.
+	// need to add erase part.
 }
 
 void MapAirForce::cmdToMap(int cmd, cmdForm form, cmdForm *p_rtn)
 {
 	switch (cmd) {
 		case FINALIZE_MANUV:
-			finalizeManuv(form);
+			finalizeManuvByAcID(form);
+			break;
+		case REFLECT_ERASE_PLOT:
+			reflectErasePlotByAcID(form);
 			break;
 		default:
 			break;
@@ -5857,6 +5982,12 @@ void MapAirForce::ShowManuvMenuSelItem(int selID, int distance, cmdForm *p_formR
 				form.manuv[i] = MANUV_BK;
 				break;
 			case 662: // Finalize
+				int	cnt = 0;
+				int	j;
+				cnt = checkIfNeedBreaks(*p_formRtnGetManuvable);
+				for (j = 0; j < cnt; j++) {
+					form.manuv[i++] = MANUV_BK;
+				}
 				form.manuv[i] = (p_formRtnGetManuvable->manuvable).remainingMP - distance;
 				break;
 			default:
@@ -8186,9 +8317,14 @@ void GameAirForce::onExitGameModeFire()
 
 void GameAirForce::finalizeAcManuv(cmdForm form)
 {
+// Requirement:
+// 	form must be returned form of GET_MANUVALBLE
+//
 	list<shared_ptr<MapAirForce>>::iterator	itr;
 
 	form.command = FINALIZE_MANUV;
+	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = form.aircraftID;
 
 	for (itr = m_Maps.begin(); 
   	     itr != m_Maps.end(); 
@@ -8200,7 +8336,7 @@ void GameAirForce::finalizeAcManuv(cmdForm form)
 void GameAirForce::finalizeAcManuvs()
 {
 	cmdForm 	form;
-	cmdForm 	rtn[MAX_AC_CNT + MAX_PLAYER_CNT];
+	cmdForm 	rtn[MAX_AC_CNT + 1]; // +1 for TAIL
 
 	form.command = GET_MANUVABLE;
 	form.playerID = ALL_PLAYERS;
@@ -8216,6 +8352,45 @@ void GameAirForce::finalizeAcManuvs()
 void GameAirForce::onExitGameModePlot()
 {
 	finalizeAcManuvs();
+}
+
+void GameAirForce::reflectAndErasePlot(cmdForm form)
+{
+// Requirement:
+// 	form must be returned form of GET_MANUVALBLE
+//
+	list<shared_ptr<MapAirForce>>::iterator	itr;
+
+	form.command = REFLECT_ERASE_PLOT;
+	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = form.aircraftID;
+
+	for (itr = m_Maps.begin(); 
+  	     itr != m_Maps.end(); 
+	     itr ++) {
+		(*itr)->cmdToMap(REFLECT_ERASE_PLOT, form, NULL);
+	}
+}
+
+void GameAirForce::reflectAndErasePlots()
+{
+	cmdForm 	form;
+	cmdForm 	rtn[MAX_AC_CNT + 1]; // +1 for TAIL
+
+	form.command = GET_MANUVABLE;
+	form.playerID = ALL_PLAYERS;
+	form.selectedAircraft = ALL_AC;
+	cmdToGame(GET_MANUVABLE, form, rtn);
+
+	int	i = 0;
+	while (rtn[i].command != TAIL) {
+		reflectAndErasePlot(rtn[i]);
+	}
+}
+
+void GameAirForce::onEnterGameModeMove()
+{
+	reflectAndErasePlots();
 }
 
 void GameAirForce::OnButtonProceed()
@@ -8251,6 +8426,7 @@ void GameAirForce::OnButtonProceed()
 			m_gameMode = GM_MOVE;
 			break;
 		case GM_MOVE:
+			onEnterGameModeMove();
 			m_gameMode = GM_RECORD;
 			break;
 		case GM_RECORD:
