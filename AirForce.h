@@ -179,6 +179,8 @@ enum CommandToX {
 	USE_AMMO		= 18,
 	MODIFY_DAMAGE		= 19,
 	UPDATE_ACSTAT		= 20,
+	CLEAR_MANUVS		= 21,
+	TAKE_LOGS		= 22,
 // cmdToMap commands
 	FINALIZE_MANUV		= 1001,
 	REFLECT_ERASE_PLOT	= 1002,
@@ -358,7 +360,8 @@ struct cmdForm {
 	firingEntry	firingEnt;
 	int		silhouette;
 	int		fireAccuracy;
-	Aircraft	*p_aircraft;
+	int		*p_aircraft;
+	int		gameTurn;
 };
 
 struct ammo {
@@ -717,9 +720,8 @@ public:
 class Aircraft {
 protected:
   //------------------- protected member variables ---------------------
-	int	m_manuvIndex;
-	list<shared_ptr<cmdForm>>	m_logs;
-	bool	m_loaded;
+	int	m_logGameTurn;		// this variable is used for logging
+	list<shared_ptr<Aircraft>>	m_logs;
 	int	m_pilotVision;
 	int 	m_pilotReflex;
 	int	m_pilotTraining;
@@ -787,6 +789,7 @@ public:
 	float	m_alt;
 	int	m_bank;
 	int	m_nose;
+	bool	m_loaded;
 	int	m_manuv[80];
 	damage 	m_damage;
 	ammo	m_ammo;
@@ -948,6 +951,11 @@ protected:
 	void cmdToPlayerUPDATE_ACSTAT_Ac
 		(cmdForm form, cmdForm *p_rtn, shared_ptr<Aircraft> p_ac);
 	void cmdToPlayerUPDATE_ACSTAT(cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerClearManuv
+		(cmdForm form, shared_ptr<Aircraft> p_ac);
+	void cmdToPlayerCLEAR_MANUVS(cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerTakeLog(cmdForm form, shared_ptr<Aircraft> sp_ac);
+	void cmdToPlayerTAKE_LOGS(cmdForm form, cmdForm *p_rtn);
 
 public:
   //------------------- public member variables ---------------------
@@ -1045,9 +1053,10 @@ protected:
 	void finalizeAcManuv(cmdForm form);
 	void finalizeAcManuvs();
 	void onExitGameModePlot();
-	void onEnterGameModeMove();
 	void reflectAndErasePlot(cmdForm form);
 	void reflectAndErasePlots();	
+	void logAircrafts(int gameTurn);
+	void onEnterGameModeMove();
 	void OnButtonProceed();
 	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
 	int  insertFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index);
