@@ -181,6 +181,7 @@ enum CommandToX {
 	UPDATE_ACSTAT		= 20,
 	CLEAR_MANUVS		= 21,
 	TAKE_LOGS		= 22,
+	WRITE_FILE		= 23,
 // cmdToMap commands
 	FINALIZE_MANUV		= 1001,
 	REFLECT_ERASE_PLOT	= 1002,
@@ -362,6 +363,7 @@ struct cmdForm {
 	int		fireAccuracy;
 	int		*p_aircraft;
 	int		gameTurn;
+	fstream		*p_file;
 };
 
 struct ammo {
@@ -452,6 +454,24 @@ LPCTSTR listStrNose[]
 		L"Nose Level",
 		L"Nose Down"
 	};
+
+enum chunkType {
+	UNDEF = -1,
+	GAME = 1,
+	PLAYER = 2,
+	AIRCRAFT = 3,
+	LOG_AIRCRAFT = 4,
+	FIRING = 5,
+};
+
+struct chunkTab{
+	chunkType	type;
+	int		cnt;
+	int		revMain;
+	int		revSub;
+	int		playerID;
+	int		acID;
+}
 
 ///////////////////////////////////////////////////////////////////////////
 // 
@@ -956,6 +976,10 @@ protected:
 	void cmdToPlayerCLEAR_MANUVS(cmdForm form, cmdForm *p_rtn);
 	void cmdToPlayerTakeLog(cmdForm form, shared_ptr<Aircraft> sp_ac);
 	void cmdToPlayerTAKE_LOGS(cmdForm form, cmdForm *p_rtn);
+	void writeAircraftLogToFile(cmdForm form, shared_ptr<Aircraft> sp_log);
+	void writeAircraftLogsToFile(cmdForm form, shared_ptr<Aircraft> sp_ac);
+	void writeAircraftToFile(cmdForm form, shared_ptr<Aircraft> sp_ac);
+	void cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn);
 
 public:
   //------------------- public member variables ---------------------
@@ -1074,14 +1098,20 @@ protected:
 	HWND createFiringTable();
 	void handleWM_NOTIFY_FiringTable(LPARAM lParam);
 	void handleWM_NOTIFY(LPARAM lParam);
+	void writeChunkTabGameToFile(fstream *p_file);
+	void writeGameToFile(fstream *p_file);
+	void writeWholePlayersToFile(fstream *p_file);
+	void writeFiringEntriesToFile(fstream *p_file);
+	void writeWholeGameToFile(fstream *p_file);
+	bool onFileSaveAs();
 	void OnEditNewMapDialog();
 public:
   //------------------- public member variables ---------------------
 	GameMode m_gameMode;
 	list<shared_ptr<PlayerAirForce>>::iterator mItrSelectedPlayer;
+  //------------------- public member functions ---------------------
 	static int GameAirForce::numberAircraft(int acmID);
 
-  //------------------- public member functions ---------------------
   	GameAirForce::GameAirForce() {
 		m_gameTurn = 1;
 		m_gameMode = GM_NOP;

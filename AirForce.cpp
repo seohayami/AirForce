@@ -2097,7 +2097,6 @@ void PlayerAirForce::cmdToPlayerTakeLog(cmdForm form, shared_ptr<Aircraft> sp_ac
 void PlayerAirForce::cmdToPlayerTAKE_LOGS(cmdForm form, cmdForm *p_rtn)
 {
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
-	int i = 0;
 
 	if (form.selectedAircraft == SELECTED_AC) {
 		cmdToPlayerTakeLog(form, m_ItrSelectedAircraft);
@@ -2109,6 +2108,75 @@ void PlayerAirForce::cmdToPlayerTAKE_LOGS(cmdForm form, cmdForm *p_rtn)
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			if ((*itr)->m_id == form.aircraftID) {
 				cmdToPlayerTakeLog(form, itr);
+			}
+		}
+	}
+}
+
+void PlayerAirForce::writeAircraftLogToFile(cmdForm form, shared_ptr<Aircraft> sp_log)
+{
+	(form.p_stream)->write((char*)&(**sp_log), sizeof(Aircraft));
+}
+
+void PlayerAirForce::writeAircraftLogsToFile(cmdForm form, shared_ptr<Aircraft> sp_ac)
+{
+	list<std::shared_ptr<Aircraft>>::iterator itr;
+
+	for (itr = (*sp_ac)->m_logs.begin(); itr != (*sp_ac)->m_logs.end(); itr++) {
+			writeAircraftLogToFile(form, itr);
+	}
+}
+
+void PlayerAirForce::writeAircraftToFile(cmdForm form, shared_ptr<Aircraft> sp_ac)
+{
+
+	(form.p_stream)->write((char*)&(**sp_ac), sizeof(Aircraft));
+
+	chunkTab	tab;
+	tab.type = LOG_AIRCRFT;
+	tab.cnt = (*sp_ac)->m_logs.size();
+	tab.revMain = 0;
+	tab.revSub = 0;
+	tab.playerID = mPlayerID;
+	tab.acID = (*sp_ac)->m_id;
+	(form.p_stream)->write((char*)&(tab), sizeof(tab));
+
+	writeAircraftLogsToFile(form, sp_ac);
+}
+
+void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
+{
+	chunkTab	tab;
+	tab.type = PLAYER;
+	tab.cnt = 1;
+	tab.revMain = 0;
+	tab.revSub = 0;
+	tab.playerID = mPlayerID;
+	tab.acID = -1;
+	(form.p_stream)->write((char*)&(tab), sizeof(tab));
+
+	(form.p_stream)->write((char*)&(this), sizeof(PlayerAirForce));
+
+	tab.type = AIRCRAFT;
+	tab.cnt = mAircrafts.size();
+	tab.revMain = 0;
+	tab.revSub = 0;
+	tab.playerID = mPlayerID;
+	tab.acID = -1;
+	(form.p_stream)->write((char*)&(tab), sizeof(tab));
+	
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+
+	if (form.selectedAircraft == SELECTED_AC) {
+		writeAircraftToFile(form, m_ItrSelectedAircraft);
+	} else if (form.selectedAircraft == ALL_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			writeAircraftToFile(form, itr);
+		}
+	} else {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.aircraftID) {
+				writeAircraftToFile(form, itr);
 			}
 		}
 	}
@@ -2316,6 +2384,9 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 		case TAKE_LOGS:
 			cmdToPlayerTAKE_LOGS(form, p_rtn);
+			break;
+		case WRITE_FILE:
+			cmdToPlayerWRITE_FILE(form, p_rtn);
 			break;
 		default:
 			break;
@@ -6935,6 +7006,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case MODIFY_DAMAGE:
 		case CLEAR_MANUVS:
 		case TAKE_LOGS:
+		case WRITE_FILE:
 			if (form.playerID == SELECTED_PLAYER) {
 				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
 			} else if (form.playerID == ALL_PLAYERS) {
@@ -8469,10 +8541,7 @@ void GameAirForce::logAircrafts(int gameTurn)
 	f.selectedAircraft = ALL_AC;
 	f.gameTurn = gameTurn;
 	cmdToGame(TAKE_LOGS, f, NULL);
-
-
 }
-// under construction
 
 void GameAirForce::onEnterGameModeMove()
 {
@@ -9001,6 +9070,115 @@ void GameAirForce::handleWM_NOTIFY(LPARAM lParam)
 	handleWM_NOTIFY_FiringTable(lParam);
 }
 
+void GameAirForce::writeChunkTabGameToFile(fstream *p_file) 
+{
+	chunkTab	tab;
+
+	tab.type = GAME;
+	tab.cnt = 1;
+	tab.revMain = 0;
+	tab.rebSub = 0;
+	tab.playerID = -1;
+	tab.acID = -1;
+	p_file->write((char*)&(tab), sizeof(tab));
+}
+
+void GameAirForce::writeGameToFile(fstream *p_file)
+{
+	p_file->write((char*)&(this), sizeof(GameAirForce));
+
+}
+
+void GameAirForce::writeWholePlayersToFile(fstream *p_file)
+{
+	cmdForm	f;
+	f.command = WRITE_FILE;
+	f.playerID = ALL_PLAYERS;
+	f.selectedAircraft = ALL_AC;
+	f.p_stream = p_file;
+	cmdToGame(WRITE_FILE, form, rtn);
+}
+
+void GameAirForce::writeFiringEntriesToFile(fstream *p_file)
+{
+	chunkTab	tab;
+
+	tab.type = FIRING;
+	tab.cnt = m_firingEntries.size();
+	tab.revMain = 0;
+	tab.rebSub = 0;
+	tab.playerID = -1;
+	tab.acID = -1;
+	p_file->write((char*)&(tab), sizeof(tab));
+
+	list<std::shared_ptr<firingEntry>>::iterator itr;
+
+	for (itr = m_firingEntries.begin(); itr != m_firingEntries.end(); itr++) {
+		p_file->write((char*)&(**itr), sizeof(firingEntry));
+	}
+}
+
+void GameAirForce::writeWholeGameToFile(fstream *p_file) 
+{
+	writeChunkTabGameToFile(p_file);
+	writeGameToFile(p_file);
+	writeWholePlayersToFile(p_file);
+	writeFiringEntriesToFile(p_file);
+}
+
+bool GameAirForce::onFileSaveAs()
+{
+	PWSTR pszFilePath;
+
+	HRESULT hr = CoInitializeEx(NULL,
+			            COINIT_APARTMENTTHREADED
+				  | COINIT_DISABLE_OLE1DDE);
+	if (SUCCEEDED(hr)) {
+		IFileSaveDialog *pFileSave;
+		hr = CoCreateInstance(CLSID_FileSaveDialog,
+				      NULL,
+				      CLSCTX_ALL,
+				      IID_IFileSaveDialog,
+				      reinterpret_cast<void**> (&pFileSave));
+		if (SUCCEEDED(hr)) {
+			hr = pFileSave->Show(NULL);
+			if (SUCCEEDED(hr)) {
+				IShellItem *pItem;
+				hr = pFileSave->GetResult(&pItem);
+				if (SUCCEEDED(hr)) {
+					hr = pItem->GetDisplayName
+						(SIGDN_FILESYSPATH, &pszFilePath);
+					if (SUCCEEDED(hr)) {
+						SetFileMode(SpecifiedMode);
+						pszFilePathSpecified = pszFilePath;	
+					}
+				}
+				pItem->Release();
+			}
+			pFileSave->Release();
+		}
+		CoUninitialize();
+	}
+
+	fstream	file;
+	std::list<std::shared_ptr<MyEllipse>>::iterator itr;
+
+	file.open(pszFilePath, ios::out | ios::binary);
+	if (! file.is_open()) {
+		return FALSE;
+	}
+
+
+	writeWholeGameToFile(fstream *p_file);
+//	for (itr = ellipses.begin(); itr != ellipses.end(); ++itr) {
+//		file.write((char*)&((*itr)->ellipse), sizeof(MyEllipse));
+//	}
+	file.close();
+	return TRUE;
+}
+
+
+
 LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	HWND h_buttonProceed;
@@ -9094,7 +9272,7 @@ LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				}
 				break;
 			case IDM_FILESAVEAS:
-				if (OnFileSaveAs()) {
+				if (onFileSaveAs()) {
 				} else {
 					return EXIT_FAILURE;
 				}
