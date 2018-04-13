@@ -9108,6 +9108,25 @@ void GameAirForce::writeWholePlayersToFile(fstream *p_file)
 	cmdToGame(WRITE_FILE, f, NULL);
 }
 
+void GameAirForce::writeWholeMapsToFile(fstream *p_file)
+{
+	chunkTab	tab;
+
+	tab.type = MAP;
+	tab.cnt = mMaps.size();
+	tab.revMain = 0;
+	tab.revSub = 0;
+	tab.playerID = -1;
+	tab.acID = -1;
+	p_file->write((char*)&(tab), sizeof(tab));
+
+	list<shared_ptr<MapAirForce>>::iterator itr;
+
+	for (itr = mMaps.begin(); itr != mMaps.end(); itr++) {
+		p_file->write((char*)&(**itr), sizeof(MapAirForce));
+	}
+}
+
 void GameAirForce::writeFiringEntriesToFile(fstream *p_file)
 {
 	chunkTab	tab;
@@ -9132,6 +9151,7 @@ void GameAirForce::writeWholeGameToFile(fstream *p_file)
 	writeChunkTabGameToFile(p_file);
 	writeGameToFile(p_file);
 	writeWholePlayersToFile(p_file);
+	writeWholeMapsToFile(p_file);
 	writeFiringEntriesToFile(p_file);
 }
 
@@ -9186,6 +9206,210 @@ bool GameAirForce::onFileSaveAs()
 	return TRUE;
 }
 
+void GameAirForce::replicaGame(GameAirForce *p_src, GameAirForce *p_des)
+{
+	int	i;
+
+	p_des->mNewPlayerID = p_src->mNewPlayerID;
+	p_des->mNewPlayerRegStat = p_src->mNewPlayerRegStat;
+	for (i = 0; i < MAX_AIRCRAFTMODELNUMBER; i++) {
+		p_des->aircraftID[i] = p_src->aircraftID[i];
+	}
+	p_des->m_gameTurn = p_src->m_gameTurn;
+	p_des->m_gameMode = p_src->m_gameMode;
+}
+
+
+bool GameAirForce::readChunksGame(fstream *p_file)
+{
+// Return:
+// 	true if succeeded
+// 	false if failed
+//
+	GameAirForce	g;
+
+	p_file->read((char*)&g, sizeof(GameAirForce));
+	if (file.fail()) {
+		return false;
+	}
+	replicaGame(&g, this);
+
+	return true;
+}
+
+void GameAirForce::replicaPlayer(PlayerAirForce *p_player, GameAirForce *p_des)
+{
+	shared_ptr<PlayerAirForce> sp_new(new PlayerAirForce);
+	list<std::shared_ptr<PlayerAirForce>>::iterator itr;
+
+	mPlayers.push_front(sp_new);
+	itr = mPlayers.begin();
+
+	(**itr) = *p_player; 
+}
+
+bool GameAirForce::readChunksPlayers(fstream *p_file, chunkTab tab)
+{
+// Return:
+// 	true if succeeded
+// 	false if failed
+//
+
+	PlayerAirForce	player;
+	int		i;
+
+	for (i = 0; i < chunkTab.cnt; i++) {
+		p_file->read((char*)&player, sizeof(PlayerAirForce));
+		if (file.fail()) {
+			return false;
+		}
+		replicaPlayer(&player, this);
+	}
+
+	return true;
+}
+
+void GameAirForce::replicaMap(MapAirForce *p_map, GameAirForce *p_des)
+{
+	shared_ptr<MapAirForce> sp_new(new MapAirForce);
+	list<std::shared_ptr<MapAirForce>>::iterator itr;
+
+	mMaps.push_front(sp_new);
+	itr = mMaps.begin();
+
+	(**itr) = *p_map; 
+}
+
+bool GameAirForce::readChunksMaps(fstream *p_file, chunkTab tab)
+{
+// Return:
+// 	true if succeeded
+// 	false if failed
+//
+
+	MapAirForce	map;
+	int		i;
+
+	for (i = 0; i < chunkTab.cnt; i++) {
+		p_file->read((char*)&map, sizeof(MapAirForce));
+		if (file.fail()) {
+			return false;
+		}
+		replicaMap(&map, this);
+	}
+
+	return true;
+}
+
+bool GameAirForce::readChunks(fstream *p_file)
+{
+// Return:
+// 	true if succeeded
+// 	false if failed
+//
+	result = false;
+	chunkTab	tab;
+
+	p_file->read((char*)&tab, sizeof(chunkTab));
+	switch (tab.type) {
+		case GAME:
+			result = readChunksGame(p_file);
+			break;
+		case PLAYER:
+			result = readChunksPlayers(p_file, tab);
+			break;
+		case MAP:
+			result = readChunksMaps(p_file, tab);
+			break;
+		case AIRCRAFT:
+			break;
+		case LOG_AIRCRFT:
+			break;
+		case FIRING:
+			break;
+		default:
+			return false;
+	}
+
+	return result;
+//	under construction
+//
+}
+
+bool GameAirForce::onFileOpen()
+{
+	PWSTR pszFilePath;
+
+	HRESULT hr = CoInitializeEx(NULL,
+			            COINIT_APARTMENTTHREADED
+				  | COINIT_DISABLE_OLE1DDE);
+	if (SUCCEEDED(hr)) {
+		IFileOpenDialog *pFileOpen;
+		hr = CoCreateInstance(CLSID_FileOpenDialog,
+				      NULL,
+				      CLSCTX_ALL,
+				      IID_IFileOpenDialog,
+				      reinterpret_cast<void**> (&pFileOpen));
+		if (SUCCEEDED(hr)) {
+			hr = pFileOpen->Show(NULL);
+			if (SUCCEEDED(hr)) {
+				IShellItem *pItem;
+				hr = pFileOpen->GetResult(&pItem);
+				if (SUCCEEDED(hr)) {
+					hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+					if (SUCCEEDED(hr)) {
+						SetFileMode(SpecifiedMode);
+						pszFilePathSpecified = pszFilePath;	
+					}
+				}
+				pItem->Release();
+			}
+			pFileOpen->Release();
+		}
+		CoUninitialize();
+	}
+
+	fstream file;
+//	std::list<std::shared_ptr<MyEllipse>>::iterator itr;
+
+	file.open(pszFilePath, ios::in | ios::binary);
+	if (! file.is_open()) {
+		return FALSE;
+	}
+	do {
+		readChunks(&file);
+	} while(! file.eof());
+
+/*
+	do {
+		MyEllipse tmp;
+		file.read((char*)&tmp, sizeof(MyEllipse));
+
+		if (file.fail()) {  // I dont know why, but eof() succeeds even after reading last element.
+			break;
+		}
+
+		std::shared_ptr<MyEllipse> 	 ptrEllipse(new MyEllipse);
+
+//		ptrEllipse->ellipse.point.x = tmp.ellipse.point.x;
+//		ptrEllipse->ellipse.point.y = tmp.ellipse.point.y;
+//		ptrEllipse->ellipse.radiusX = tmp.ellipse.radiusX;
+//		ptrEllipse->ellipse.radiusY = tmp.ellipse.radiusY;
+//
+//		ptrEllipse->color = tmp.color;
+		*ptrEllipse = tmp;
+
+		ellipses.push_front(ptrEllipse);
+
+	} while (! file.eof());
+
+	selection = ellipses.begin();
+ */
+
+	file.close();
+	return TRUE;
+
+}
 
 
 LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)

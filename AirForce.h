@@ -456,12 +456,13 @@ LPCTSTR listStrNose[]
 	};
 
 enum chunkType {
-	UNDEF = -1,
-	GAME = 1,
-	PLAYER = 2,
-	AIRCRAFT = 3,
-	LOG_AIRCRAFT = 4,
-	FIRING = 5,
+	UNDEF 		= -1,
+	GAME 		= 1,
+	PLAYER 		= 2,
+	MAP 		= 3,
+	AIRCRAFT 	= 4,
+	LOG_AIRCRAFT 	= 5,
+	FIRING 		= 6,
 };
 
 struct chunkTab{
@@ -1101,12 +1102,24 @@ protected:
 	HWND createFiringTable();
 	void handleWM_NOTIFY_FiringTable(LPARAM lParam);
 	void handleWM_NOTIFY(LPARAM lParam);
+	//----------------------
 	void writeChunkTabGameToFile(fstream *p_file);
 	void writeGameToFile(fstream *p_file);
 	void writeWholePlayersToFile(fstream *p_file);
+	void writeWholeMapsToFile(fstream *p_file);
 	void writeFiringEntriesToFile(fstream *p_file);
 	void writeWholeGameToFile(fstream *p_file);
 	bool onFileSaveAs();
+	//----------------------
+	void replicaGame(GameAirForce *p_src, GameAirForce *p_des);
+	bool readChunksGame(fstream *p_file);
+	void replicaPlayer(PlayerAirForce *p_player, GameAirForce *p_des);
+	bool readChunksPlayers(fstream *p_file, chunkTab tab);
+	void replicaMap(MapAirForce *p_map, GameAirForce *p_des);
+	bool readChunksMaps(fstream *p_file, chunkTab tab);
+	bool readChunks(fstream *p_file);
+	bool onFileOpen();
+	//----------------------
 	void OnEditNewMapDialog();
 public:
   //------------------- public member variables ---------------------
