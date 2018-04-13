@@ -867,12 +867,12 @@ void Aircraft::getPrevTwoManuv(int *last, int *secondLast)
 	}
 
 	if (*secondLast == MANUV_EN) { // need to go back to log data of previous GameTurns
-		list<shared_ptr<cmdForm>>::iterator itr;
+		list<shared_ptr<Aircraft>>::iterator itr;
 
 		for (itr = m_logs.begin(); itr != m_logs.end(); itr++) {
-			for (i = 0; (*itr)->manuv[i] != MANUV_EN; i++) {
-				if ((((*itr)->manuv[i] < 0) && ((*itr)->manuv[i] > MANUV_PW)) 
-				||  (((*itr)->manuv[i] >= 0) && ((*itr)->manuv[i] < 20))){
+			for (i = 0; (*itr)->m_manuv[i] != MANUV_EN; i++) {
+				if ((((*itr)->m_manuv[i] < 0) && ((*itr)->m_manuv[i] > MANUV_PW)) 
+				||  (((*itr)->m_manuv[i] >= 0) && ((*itr)->m_manuv[i] < 20))){
 					*last = m_manuv[i];
 	        			*secondLast = *last;	
 				}
@@ -2057,10 +2057,14 @@ void PlayerAirForce::cmdToPlayerUPDATE_ACSTAT(cmdForm form, cmdForm *p_rtn)
 }
 
 void PlayerAirForce::cmdToPlayerClearManuv
-	(cmdForm form, shared_ptr<Aircraft> sp_ac)
+	(cmdForm form,list<shared_ptr<Aircraft>>::iterator itr)
 {
 
-	(*sp_ac)->manuv = L"";
+//	(*itr)->m_manuv = L"";
+//	statement above causes compile error, because assing value 
+//	to each element of array is necessary.
+//	Initalizing entire array to ceratin values is possible.
+	(*itr)->m_manuv[0] = L'\0';
 }
 
 void PlayerAirForce::cmdToPlayerCLEAR_MANUVS(cmdForm form, cmdForm *p_rtn)
@@ -2083,14 +2087,16 @@ void PlayerAirForce::cmdToPlayerCLEAR_MANUVS(cmdForm form, cmdForm *p_rtn)
 	}
 }
 
-void PlayerAirForce::cmdToPlayerTakeLog(cmdForm form, shared_ptr<Aircraft> sp_ac)
+void PlayerAirForce::cmdToPlayerTakeLog
+	(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac)
 {
-	shared_ptr<Aircraft> ptrAircraft(new Aircraft);
+	shared_ptr<Aircraft> sp_new(new Aircraft);
 	list<std::shared_ptr<Aircraft>>::iterator itr;
-	m_logs.push_front(ptrAircraft);
-	itr = m_logs.begin();
-	(**itr) = **sp_ac; 
-	(*itr)->gameTurn = form.gameTurn;
+
+	(*itr_ac)->m_logs.push_front(sp_new);
+	itr = (*itr_ac)->m_logs.begin();
+	(**itr) = **itr_ac; 
+	(*itr)->m_logGameTurn = form.gameTurn;
 
 }
 
@@ -2113,35 +2119,38 @@ void PlayerAirForce::cmdToPlayerTAKE_LOGS(cmdForm form, cmdForm *p_rtn)
 	}
 }
 
-void PlayerAirForce::writeAircraftLogToFile(cmdForm form, shared_ptr<Aircraft> sp_log)
+void PlayerAirForce::writeAircraftLogToFile
+	(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac)
 {
-	(form.p_stream)->write((char*)&(**sp_log), sizeof(Aircraft));
+	(form.p_file)->write((char*)&(**itr_ac), sizeof(Aircraft));
 }
 
-void PlayerAirForce::writeAircraftLogsToFile(cmdForm form, shared_ptr<Aircraft> sp_ac)
+void PlayerAirForce::writeAircraftLogsToFile
+	(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac)
 {
 	list<std::shared_ptr<Aircraft>>::iterator itr;
 
-	for (itr = (*sp_ac)->m_logs.begin(); itr != (*sp_ac)->m_logs.end(); itr++) {
+	for (itr = (*itr_ac)->m_logs.begin(); itr != (*itr_ac)->m_logs.end(); itr++) {
 			writeAircraftLogToFile(form, itr);
 	}
 }
 
-void PlayerAirForce::writeAircraftToFile(cmdForm form, shared_ptr<Aircraft> sp_ac)
+void PlayerAirForce::writeAircraftToFile
+	(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac)
 {
 
-	(form.p_stream)->write((char*)&(**sp_ac), sizeof(Aircraft));
+	(form.p_file)->write((char*)&(**itr_ac), sizeof(Aircraft));
 
 	chunkTab	tab;
 	tab.type = LOG_AIRCRFT;
-	tab.cnt = (*sp_ac)->m_logs.size();
+	tab.cnt = (*itr_ac)->m_logs.size();
 	tab.revMain = 0;
 	tab.revSub = 0;
 	tab.playerID = mPlayerID;
-	tab.acID = (*sp_ac)->m_id;
-	(form.p_stream)->write((char*)&(tab), sizeof(tab));
+	tab.acID = (*itr_ac)->m_id;
+	(form.p_file)->write((char*)&(tab), sizeof(tab));
 
-	writeAircraftLogsToFile(form, sp_ac);
+	writeAircraftLogsToFile(form, itr_ac);
 }
 
 void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
@@ -2153,9 +2162,9 @@ void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
 	tab.revSub = 0;
 	tab.playerID = mPlayerID;
 	tab.acID = -1;
-	(form.p_stream)->write((char*)&(tab), sizeof(tab));
+	(form.p_file)->write((char*)&(tab), sizeof(tab));
 
-	(form.p_stream)->write((char*)&(this), sizeof(PlayerAirForce));
+	(form.p_file)->write((char*)&(*this), sizeof(PlayerAirForce));
 
 	tab.type = AIRCRAFT;
 	tab.cnt = mAircrafts.size();
@@ -2163,7 +2172,7 @@ void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
 	tab.revSub = 0;
 	tab.playerID = mPlayerID;
 	tab.acID = -1;
-	(form.p_stream)->write((char*)&(tab), sizeof(tab));
+	(form.p_file)->write((char*)&(tab), sizeof(tab));
 	
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
@@ -2792,7 +2801,7 @@ void MapAirForce::reflectErasePlotByAcID(cmdForm form)
 
 	f.command = CLEAR_MANUVS;
 	f.playerID = ALL_PLAYERS;
-	f.selectedAircraft =  form.aircraftID
+	f.selectedAircraft =  form.aircraftID;
 	if (mp_ownerGame) {
 		((GameAirForce*)mp_ownerGame)->cmdToGame(CLEAR_MANUVS, f, NULL);
 	}
@@ -8536,7 +8545,7 @@ void GameAirForce::reflectAndErasePlots()
 void GameAirForce::logAircrafts(int gameTurn)
 {
 	cmdForm	f;
-	f.command = TAKE_LOGS
+	f.command = TAKE_LOGS;
 	f.playerID = ALL_PLAYERS;
 	f.selectedAircraft = ALL_AC;
 	f.gameTurn = gameTurn;
@@ -9077,7 +9086,7 @@ void GameAirForce::writeChunkTabGameToFile(fstream *p_file)
 	tab.type = GAME;
 	tab.cnt = 1;
 	tab.revMain = 0;
-	tab.rebSub = 0;
+	tab.revSub = 0;
 	tab.playerID = -1;
 	tab.acID = -1;
 	p_file->write((char*)&(tab), sizeof(tab));
@@ -9085,7 +9094,7 @@ void GameAirForce::writeChunkTabGameToFile(fstream *p_file)
 
 void GameAirForce::writeGameToFile(fstream *p_file)
 {
-	p_file->write((char*)&(this), sizeof(GameAirForce));
+	p_file->write((char*)&(*this), sizeof(GameAirForce));
 
 }
 
@@ -9095,8 +9104,8 @@ void GameAirForce::writeWholePlayersToFile(fstream *p_file)
 	f.command = WRITE_FILE;
 	f.playerID = ALL_PLAYERS;
 	f.selectedAircraft = ALL_AC;
-	f.p_stream = p_file;
-	cmdToGame(WRITE_FILE, form, rtn);
+	f.p_file = p_file;
+	cmdToGame(WRITE_FILE, f, NULL);
 }
 
 void GameAirForce::writeFiringEntriesToFile(fstream *p_file)
@@ -9106,7 +9115,7 @@ void GameAirForce::writeFiringEntriesToFile(fstream *p_file)
 	tab.type = FIRING;
 	tab.cnt = m_firingEntries.size();
 	tab.revMain = 0;
-	tab.rebSub = 0;
+	tab.revSub = 0;
 	tab.playerID = -1;
 	tab.acID = -1;
 	p_file->write((char*)&(tab), sizeof(tab));
@@ -9161,15 +9170,15 @@ bool GameAirForce::onFileSaveAs()
 	}
 
 	fstream	file;
-	std::list<std::shared_ptr<MyEllipse>>::iterator itr;
-
-	file.open(pszFilePath, ios::out | ios::binary);
+//	std::list<std::shared_ptr<MyEllipse>>::iterator itr;
+//
+//	file.open(pszFilePath, ios::out | ios::binary);
 	if (! file.is_open()) {
 		return FALSE;
 	}
 
 
-	writeWholeGameToFile(fstream *p_file);
+	writeWholeGameToFile(&file);
 //	for (itr = ellipses.begin(); itr != ellipses.end(); ++itr) {
 //		file.write((char*)&((*itr)->ellipse), sizeof(MyEllipse));
 //	}

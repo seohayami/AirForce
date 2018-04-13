@@ -471,7 +471,7 @@ struct chunkTab{
 	int		revSub;
 	int		playerID;
 	int		acID;
-}
+};
 
 ///////////////////////////////////////////////////////////////////////////
 // 
@@ -740,8 +740,6 @@ public:
 class Aircraft {
 protected:
   //------------------- protected member variables ---------------------
-	int	m_logGameTurn;		// this variable is used for logging
-	list<shared_ptr<Aircraft>>	m_logs;
 	int	m_pilotVision;
 	int 	m_pilotReflex;
 	int	m_pilotTraining;
@@ -813,6 +811,8 @@ public:
 	int	m_manuv[80];
 	damage 	m_damage;
 	ammo	m_ammo;
+	list<shared_ptr<Aircraft>>	m_logs;
+	int	m_logGameTurn;		// this variable is used for logging
 
 	UINT_PTR mp_owner; // pointer to the owner player
 
@@ -972,12 +972,15 @@ protected:
 		(cmdForm form, cmdForm *p_rtn, shared_ptr<Aircraft> p_ac);
 	void cmdToPlayerUPDATE_ACSTAT(cmdForm form, cmdForm *p_rtn);
 	void cmdToPlayerClearManuv
-		(cmdForm form, shared_ptr<Aircraft> p_ac);
+		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr);
 	void cmdToPlayerCLEAR_MANUVS(cmdForm form, cmdForm *p_rtn);
-	void cmdToPlayerTakeLog(cmdForm form, shared_ptr<Aircraft> sp_ac);
+	void cmdToPlayerTakeLog
+		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac);
 	void cmdToPlayerTAKE_LOGS(cmdForm form, cmdForm *p_rtn);
-	void writeAircraftLogToFile(cmdForm form, shared_ptr<Aircraft> sp_log);
-	void writeAircraftLogsToFile(cmdForm form, shared_ptr<Aircraft> sp_ac);
+	void writeAircraftLogToFile
+		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac);
+	void writeAircraftLogsToFile
+		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac);
 	void writeAircraftToFile(cmdForm form, shared_ptr<Aircraft> sp_ac);
 	void cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn);
 
