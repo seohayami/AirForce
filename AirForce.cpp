@@ -2167,28 +2167,55 @@ void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
 	(form.p_file)->write((char*)&(*this), sizeof(PlayerAirForce));
 
 	tab.type = AIRCRAFT;
-	tab.cnt = mAircrafts.size();
+	tab.cnt = 1;
 	tab.revMain = 0;
 	tab.revSub = 0;
 	tab.playerID = mPlayerID;
 	tab.acID = -1;
-	(form.p_file)->write((char*)&(tab), sizeof(tab));
 	
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
 	if (form.selectedAircraft == SELECTED_AC) {
+		(form.p_file)->write((char*)&(tab), sizeof(tab));
 		writeAircraftToFile(form, m_ItrSelectedAircraft);
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			(form.p_file)->write((char*)&(tab), sizeof(tab));
 			writeAircraftToFile(form, itr);
 		}
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			if ((*itr)->m_id == form.aircraftID) {
+				(form.p_file)->write((char*)&(tab), sizeof(tab));
 				writeAircraftToFile(form, itr);
 			}
 		}
 	}
+}
+
+bool PlayerAirForce::cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn)
+{
+	Aircraft	tmp;
+
+	(form.p_file)->read((char*)&tmp, sizeof(Aircraft));
+	if (file.fail()) {
+		MessageBox(NULL, 
+	           L"cmdToPlayerREPLICA_AC: fail to read..\n",
+		   NULL,
+		   MB_OKCANCEL | MB_ICONSTOP
+		);
+		return false;
+	}
+	
+	shared_ptr<Aircraft> sp_new(new Aircraft);
+	list<std::shared_ptr<Aircraft>>::iterator itr;
+
+	mAircrafts.push_front(sp_new);
+	itr = mAircrafts.begin();
+
+	(**itr) = tmp; 
+
+	return true;
 }
 
 void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
@@ -2396,6 +2423,9 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 		case WRITE_FILE:
 			cmdToPlayerWRITE_FILE(form, p_rtn);
+			break;
+		case REPLICA_AC:
+			cmdToPlayerREPLICA_AC(form, p_rtn);
 			break;
 		default:
 			break;
@@ -7005,7 +7035,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 			}
 			break;
 
-		// PlayerID  = ALL_PLAYERS / SELECTED_PLAYER 
+		// PlayerID  = ALL_PLAYERS / SELECTED_PLAYER / PLAYER_ID
 		// and the result is not returned
 		case REPAINT:
 		case APPEND_MANUV:
@@ -7016,12 +7046,20 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case CLEAR_MANUVS:
 		case TAKE_LOGS:
 		case WRITE_FILE:
+		case REPLICA_AC:
 			if (form.playerID == SELECTED_PLAYER) {
 				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
 			} else if (form.playerID == ALL_PLAYERS) {
 				for (itrPlayer = mPlayers.begin(); 
 					itrPlayer != mPlayers.end(); itrPlayer++) {
 						(*itrPlayer)->cmdToPlayer(cmd, form, rtn);
+				}
+			} else if (form.playerID > 0) {
+				for (itrPlayer = mPlayers.begin(); 
+				     itrPlayer != mPlayers.end(); itrPlayer++) {
+					if ((*itrPlayer)->mPlayerID == form.playerID) {
+						(*itrPlayer)->cmdToPlayer(cmd, form, rtn);
+					}
 				}
 			} else {
 				MessageBox(NULL, 
@@ -9301,6 +9339,32 @@ bool GameAirForce::readChunksMaps(fstream *p_file, chunkTab tab)
 	return true;
 }
 
+void GameAirForce::readChunkAc(fstream *p_file, chunkTab tab)
+{
+	cmdForm		f;
+	f.command = REPLICA_AC;
+	f.playerID = tab.playerID;
+	f.p_file = p_file;
+	cmdToGame(REPLICA_AC, f, NULL);
+}
+
+bool GameAirForce::readChunksAcs(fstream *p_file, chunkTab tab)
+{
+// Return:
+// 	true if succeeded
+// 	false if failed
+//
+
+	Aircraft	ac;
+	int		i;
+
+	for (i = 0; i < chunkTab.cnt; i++) {
+		readChunkAc(p_file, tab);
+	}
+
+	return true;
+}
+
 bool GameAirForce::readChunks(fstream *p_file)
 {
 // Return:
@@ -9322,6 +9386,7 @@ bool GameAirForce::readChunks(fstream *p_file)
 			result = readChunksMaps(p_file, tab);
 			break;
 		case AIRCRAFT:
+			result = readChunksAcs(p_file, tab);
 			break;
 		case LOG_AIRCRFT:
 			break;

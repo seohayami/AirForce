@@ -182,6 +182,7 @@ enum CommandToX {
 	CLEAR_MANUVS		= 21,
 	TAKE_LOGS		= 22,
 	WRITE_FILE		= 23,
+	REPLICA_AC		= 24,
 // cmdToMap commands
 	FINALIZE_MANUV		= 1001,
 	REFLECT_ERASE_PLOT	= 1002,
@@ -984,6 +985,7 @@ protected:
 		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac);
 	void writeAircraftToFile(cmdForm form, shared_ptr<Aircraft> sp_ac);
 	void cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn);
+	bool cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn);
 
 public:
   //------------------- public member variables ---------------------
