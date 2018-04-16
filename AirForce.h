@@ -118,7 +118,7 @@ enum GameMode {
 	GM_FLAKS	= 8,
 	GM_MOVE		= 9,
 	GM_RECORD	=10,
-	GM_DISPATCH	= 101 
+	GM_DISPATCH	= 101 	// both NOP and DISPATCH are used in Dispatch Mode
 };
 
 LPCTSTR listStrGamePhase[]
@@ -457,7 +457,7 @@ LPCTSTR listStrNose[]
 	};
 
 enum chunkType {
-	UNDEF 		= -1,
+	UNDEF_CHUNK	= -1,
 	GAME 		= 1,
 	PLAYER 		= 2,
 	MAP 		= 3,
@@ -983,7 +983,8 @@ protected:
 		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac);
 	void writeAircraftLogsToFile
 		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac);
-	void writeAircraftToFile(cmdForm form, shared_ptr<Aircraft> sp_ac);
+	void writeAircraftToFile
+		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac);
 	void cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn);
 	bool cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn);
 
@@ -1004,6 +1005,7 @@ public:
 		m_drawOriginX = 30.0f;
 		m_drawOriginY = 30.0f;
 		mp_ownerGame = NULL;
+		m_ItrSelectedAircraft = mAircrafts.end();
 	};
 
 	void WhereToDraw(float *x, float *y);
@@ -1119,6 +1121,8 @@ protected:
 	bool readChunksPlayers(fstream *p_file, chunkTab tab);
 	void replicaMap(MapAirForce *p_map, GameAirForce *p_des);
 	bool readChunksMaps(fstream *p_file, chunkTab tab);
+	void readChunkAc(fstream *p_file, chunkTab tab);
+	bool readChunksAcs(fstream *p_file, chunkTab tab);
 	bool readChunks(fstream *p_file);
 	bool onFileOpen();
 	//----------------------
@@ -1133,6 +1137,8 @@ public:
   	GameAirForce::GameAirForce() {
 		m_gameTurn = 1;
 		m_gameMode = GM_NOP;
+		mItrSelectedPlayer = mPlayers.end();
+		mItrMaps =mMaps.end();
 	};
 	void setGameMode(GameMode mode);
 	void cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms);

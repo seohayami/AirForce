@@ -1629,12 +1629,22 @@ void PlayerAirForce::cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn)
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		(*m_ItrSelectedAircraft)->m_stat = form.acStatus;
-		(*m_ItrSelectedAircraft)->m_heading = form.heading;
-		(*m_ItrSelectedAircraft)->m_speed = form.speed;
-		(*m_ItrSelectedAircraft)->m_alt = form.alt;
-		(*m_ItrSelectedAircraft)->m_bank = form.bank;
-		(*m_ItrSelectedAircraft)->m_nose = form.nose;
+		if (m_ItrSelectedAircraft != mAircrafts.end() {
+			(*m_ItrSelectedAircraft)->m_stat = form.acStatus;
+			(*m_ItrSelectedAircraft)->m_heading = form.heading;
+			(*m_ItrSelectedAircraft)->m_speed = form.speed;
+			(*m_ItrSelectedAircraft)->m_alt = form.alt;
+			(*m_ItrSelectedAircraft)->m_bank = form.bank;
+			(*m_ItrSelectedAircraft)->m_nose = form.nose;
+			(*m_ItrSelectedAircraft)->m_virCorX = form.virCorX;
+			(*m_ItrSelectedAircraft)->m_virCorY = form.virCorY;
+		} else }
+			MessageBox(NULL, 
+      				L"cmdToPlayerSetAcstat: no aircraft selected..\n",
+				NULL,
+				MB_OKCANCEL | MB_ICONSTOP
+			);
+		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			(*itr)->m_stat = form.acStatus;
@@ -1643,6 +1653,8 @@ void PlayerAirForce::cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn)
 			(*itr)->m_alt = form.alt;
 			(*itr)->m_bank = form.bank;
 			(*itr)->m_nose = form.nose;
+			(*itr)->m_virCorX = form.virCorX;
+			(*itr)->m_virCorY = form.virCorY;
 		}
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
@@ -1653,6 +1665,8 @@ void PlayerAirForce::cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn)
 				(*itr)->m_alt = form.alt;
 				(*itr)->m_bank = form.bank;
 				(*itr)->m_nose = form.nose;
+				(*itr)->m_virCorX = form.virCorX;
+				(*itr)->m_virCorY = form.virCorY;
 			}
 		}
 	}
@@ -1733,7 +1747,7 @@ void PlayerAirForce::cmdToPlayerAppendManuvs(cmdForm form, cmdForm *p_rtn)
 		}
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			if ((*itr)->m_id == form.aircraftID) {
+			if ((*itr)->m_id == form.selectedAircraft) {
 				cmdToPlayerAppendManuv(form, itr);
 			}
 		}
@@ -2064,7 +2078,11 @@ void PlayerAirForce::cmdToPlayerClearManuv
 //	statement above causes compile error, because assing value 
 //	to each element of array is necessary.
 //	Initalizing entire array to ceratin values is possible.
-	(*itr)->m_manuv[0] = L'\0';
+//
+//	The above is not correct;
+//	m_manuv is not a string, but int array. So termination of
+//	array is defined by program. 
+	(*itr)->m_manuv[0] = MANUV_EN;
 }
 
 void PlayerAirForce::cmdToPlayerCLEAR_MANUVS(cmdForm form, cmdForm *p_rtn)
@@ -2080,7 +2098,7 @@ void PlayerAirForce::cmdToPlayerCLEAR_MANUVS(cmdForm form, cmdForm *p_rtn)
 		}
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			if ((*itr)->m_id == form.aircraftID) {
+			if ((*itr)->m_id == form.selectedAircraft) {
 				cmdToPlayerClearManuv(form, itr);
 			}
 		}
@@ -2112,7 +2130,7 @@ void PlayerAirForce::cmdToPlayerTAKE_LOGS(cmdForm form, cmdForm *p_rtn)
 		}
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			if ((*itr)->m_id == form.aircraftID) {
+			if ((*itr)->m_id == form.selectedAircraft) {
 				cmdToPlayerTakeLog(form, itr);
 			}
 		}
@@ -2142,7 +2160,7 @@ void PlayerAirForce::writeAircraftToFile
 	(form.p_file)->write((char*)&(**itr_ac), sizeof(Aircraft));
 
 	chunkTab	tab;
-	tab.type = LOG_AIRCRFT;
+	tab.type = LOG_AIRCRAFT;
 	tab.cnt = (*itr_ac)->m_logs.size();
 	tab.revMain = 0;
 	tab.revSub = 0;
@@ -2185,7 +2203,7 @@ void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
 		}
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			if ((*itr)->m_id == form.aircraftID) {
+			if ((*itr)->m_id == form.selectedAircraft) {
 				(form.p_file)->write((char*)&(tab), sizeof(tab));
 				writeAircraftToFile(form, itr);
 			}
@@ -2198,7 +2216,7 @@ bool PlayerAirForce::cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn)
 	Aircraft	tmp;
 
 	(form.p_file)->read((char*)&tmp, sizeof(Aircraft));
-	if (file.fail()) {
+	if ((form.p_file)->fail()) {
 		MessageBox(NULL, 
 	           L"cmdToPlayerREPLICA_AC: fail to read..\n",
 		   NULL,
@@ -2351,10 +2369,12 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 		case GET_LIMIT:
 			if (form.selectedAircraft == SELECTED_AC) {
-				int	acm;
-				acm = (*m_ItrSelectedAircraft)->mAircraftModel;
-				(*m_ItrSelectedAircraft)->GetLimit(acm, p_rtn) ;
-				i++;
+				if (m_ItrSelectedAircraft != mAircrafts.end()) {
+					int	acm;
+					acm = (*m_ItrSelectedAircraft)->mAircraftModel;
+					(*m_ItrSelectedAircraft)->GetLimit(acm, p_rtn) ;
+					i++;
+				}
 				p_rtn[i].command = TAIL;
 			} else if (form.selectedAircraft == ALL_AC) {
 				for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
@@ -2583,7 +2603,9 @@ void PlayerAirForce::OnLButtonDown(int pixelX, int pixelY, DWORD flags)
 
 	if (DragDetect(m_hwnd, pt)) {
 //		SetCapture(m_hwnd);
-		((GameAirForce*)mp_ownerGame)->setGameMode(GM_DISPATCH);
+		if (((GameAirForce*)mp_ownerGame)->m_gameMode == GM_NOP) {
+			((GameAirForce*)mp_ownerGame)->setGameMode(GM_DISPATCH);
+		}
 	} else {
 		if (HitTestAircrafts(dipX, dipY)) {
 //			(*m_ItrSelectedAircraft)->m_hilight = TRUE;
@@ -2747,7 +2769,7 @@ int MapAirForce::checkIfNeedBreaks(cmdForm form)
 	}
 	spdIncTblEntry	speedCat;
 	speedCat = ((Aircraft*)(a_rtn[0].p_aircraft))->ReferSpeedIncTbl();
-	if (speedCat = NA) {
+	if (speedCat == NA) {
 		cnt = form.manuvable.maxBreak;
 	}
 
@@ -2772,7 +2794,7 @@ void MapAirForce::finalizeManuvByAcID(cmdForm form)
 
 	if (remainingMP > 0) {
 		MessageBox(NULL, 
-	           L"Over Dive speed!! Applicable Breaks are applied..\n",
+		   L"Move Points Left!! forwad moves added..\n",
 		   NULL,
 		   MB_ICONEXCLAMATION
 		);
@@ -2780,13 +2802,13 @@ void MapAirForce::finalizeManuvByAcID(cmdForm form)
 	}
 	if (cnt > 0) {
 		MessageBox(NULL, 
-			L"Move Points Left!! forwad moves added..\n",
+	           	L"Over Dive speed!! Applicable Breaks are applied..\n",
 			NULL,
 			MB_ICONEXCLAMATION
 		);
 	}
 
-	int	i;
+	int	i = 0;
 	cmdForm	form1;
 	form1.command = APPEND_MANUV;
 	form1.playerID = ALL_PLAYERS;
@@ -2794,7 +2816,9 @@ void MapAirForce::finalizeManuvByAcID(cmdForm form)
 	for (i = 0; i < cnt; i++) {
 		form1.manuv[i] = MANUV_BK;
 	}
-	form1.manuv[i++] = remainingMP;
+	if (remainingMP > 0) {
+		form1.manuv[i++] = remainingMP;
+	}
 	form1.manuv[i++] = MANUV_EN;
 
 	if (mp_ownerGame) {
@@ -2824,6 +2848,8 @@ void MapAirForce::reflectErasePlotByAcID(cmdForm form)
 	f.alt = form.alt;
 	f.bank = form.bank;
 	f.nose = form.nose;
+	f.virCorX = form.virCorX;
+	f.virCorY = form.virCorY;
 
 	if (mp_ownerGame) {
 		((GameAirForce*)mp_ownerGame)->cmdToGame(SET_ACSTAT, f, NULL);
@@ -3071,7 +3097,7 @@ void MapAirForce::parseManuvBL(cmdForm *p_form, int *p_mp)
 
 void MapAirForce::parseManuvBR(cmdForm *p_form, int *p_mp)
 {
-	p_form->bank = (p_form->bank + 7) % 6;
+	p_form->bank = (p_form->bank + 5) % 6;
 }
 
 void MapAirForce::parseManuvSL(cmdForm *p_form, int *p_mp)
@@ -4835,18 +4861,27 @@ void MapAirForce::HandleDlgDeploySetAcstat(HWND hDlgWnd)
 		0,
 		0);
 
-	cmdForm form;
-	form.command = SET_ACSTAT;
-	form.acStatus = DISPATCHED;
-	form.heading = (float) heading;
-	form.speed = (int) speed;
-	form.alt = alt;
-	form.bank = (int) bank;
-	form.nose = (int) nose;
-	form.playerID = SELECTED_PLAYER;
-	form.selectedAircraft = SELECTED_AC;
-	((GameAirForce*)mp_ownerGame)->cmdToGame(SET_ACSTAT, form, NULL);
-	// you need parenthsis like above!!
+	cmdForm	f;
+	cmdForm a_rtn[2];
+	f.command = GET_AC;
+	f.playerID = SELECTED_PLAYER;
+	f.selectedAircraft = SELECTED_AC;
+	((GameAirForce*)mp_ownerGame)->cmdToGame(GET_AC, f, a_rtn);
+	if (a_rtn[0].command != TAIL) {
+		cmdForm form;
+		form = a_rtn[0];		// get virCor<X:Y>
+		form.command = SET_ACSTAT;
+		form.acStatus = DISPATCHED;
+		form.heading = (float) heading;
+		form.speed = (int) speed;
+		form.alt = alt;
+		form.bank = (int) bank;
+		form.nose = (int) nose;
+		form.playerID = SELECTED_PLAYER;
+		form.selectedAircraft = SELECTED_AC;
+		((GameAirForce*)mp_ownerGame)->cmdToGame(SET_ACSTAT, form, NULL);
+		// you need parenthsis like above!!
+	}
 
 }
 
@@ -5613,7 +5648,7 @@ int MapAirForce::selectTarget(int pixelX, int pixelY, DWORD flags)
 {
 //Return:
 //	if aircraft(s) in the hex then return = aircraftID
-//	if no aircrats then return = -1
+//	if no aircrafts then return = -1
 //
 	int acID = -1;
 	D2D1_POINT_2F ptMouse = DPIScale::PixelsToDips(pixelX, pixelY);
@@ -6998,7 +7033,9 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 
 	switch (cmd) {
 		case DISPATCH:
-			(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, NULL);
+			if (mItrSelectedPlayer != mPlayers.end()) {
+				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, NULL);
+			}
 			break;
 
 		case GET_DISPATCHED:
@@ -7010,17 +7047,19 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case GET_AC:
 		case GET_LIMIT:
 		case GET_HIT:
-		case SET_ACSTAT:
 		case GET_MANUVABLE:
 		case GET_FIRE_RANGE:
 		case GET_ACID:
 			if (form.playerID == SELECTED_PLAYER) {
-				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
+				if (mItrSelectedPlayer != mPlayers.end()) {
+					(*mItrSelectedPlayer)
+						->cmdToPlayer(cmd, form, p_rtnForms);
+				}
 			} else if (form.playerID == ALL_PLAYERS) {
 				for (itrPlayer = mPlayers.begin(); 
 					itrPlayer != mPlayers.end(); itrPlayer++) {
 						(*itrPlayer)->cmdToPlayer(cmd, form, rtn);
-					for (id = 0; rtn[rtnID].command != TAIL; id++) {
+					for (id = 0; rtn[id].command != TAIL; id++) {
 						p_rtnForms[rtnID] = rtn[id];
 						rtnID++;
 					}
@@ -7038,6 +7077,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		// PlayerID  = ALL_PLAYERS / SELECTED_PLAYER / PLAYER_ID
 		// and the result is not returned
 		case REPAINT:
+		case SET_ACSTAT:
 		case APPEND_MANUV:
 		case DELETE_MANUV:
 		case USE_AMMO:
@@ -7048,7 +7088,10 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case WRITE_FILE:
 		case REPLICA_AC:
 			if (form.playerID == SELECTED_PLAYER) {
-				(*mItrSelectedPlayer)->cmdToPlayer(cmd, form, p_rtnForms);
+				if (mItrSelectedPlayer != mPlayers.end()) {
+					(*mItrSelectedPlayer)
+						->cmdToPlayer(cmd, form, p_rtnForms);
+				}
 			} else if (form.playerID == ALL_PLAYERS) {
 				for (itrPlayer = mPlayers.begin(); 
 					itrPlayer != mPlayers.end(); itrPlayer++) {
@@ -8538,6 +8581,7 @@ void GameAirForce::finalizeAcManuvs()
 	int	i = 0;
 	while (rtn[i].command != TAIL) {
 		finalizeAcManuv(rtn[i]);
+		i++;
 	}
 }
 
@@ -8577,6 +8621,7 @@ void GameAirForce::reflectAndErasePlots()
 	int	i = 0;
 	while (rtn[i].command != TAIL) {
 		reflectAndErasePlot(rtn[i]);
+		i++;
 	}
 }
 
@@ -8627,9 +8672,9 @@ void GameAirForce::OnButtonProceed()
 			break;
 		case GM_FLAKS:
 			m_gameMode = GM_MOVE;
+			onEnterGameModeMove();
 			break;
 		case GM_MOVE:
-			onEnterGameModeMove();
 			m_gameMode = GM_RECORD;
 			break;
 		case GM_RECORD:
@@ -9267,7 +9312,7 @@ bool GameAirForce::readChunksGame(fstream *p_file)
 	GameAirForce	g;
 
 	p_file->read((char*)&g, sizeof(GameAirForce));
-	if (file.fail()) {
+	if (p_file->fail()) {
 		return false;
 	}
 	replicaGame(&g, this);
@@ -9296,9 +9341,9 @@ bool GameAirForce::readChunksPlayers(fstream *p_file, chunkTab tab)
 	PlayerAirForce	player;
 	int		i;
 
-	for (i = 0; i < chunkTab.cnt; i++) {
+	for (i = 0; i < tab.cnt; i++) {
 		p_file->read((char*)&player, sizeof(PlayerAirForce));
-		if (file.fail()) {
+		if (p_file->fail()) {
 			return false;
 		}
 		replicaPlayer(&player, this);
@@ -9328,9 +9373,9 @@ bool GameAirForce::readChunksMaps(fstream *p_file, chunkTab tab)
 	MapAirForce	map;
 	int		i;
 
-	for (i = 0; i < chunkTab.cnt; i++) {
+	for (i = 0; i < tab.cnt; i++) {
 		p_file->read((char*)&map, sizeof(MapAirForce));
-		if (file.fail()) {
+		if (p_file->fail()) {
 			return false;
 		}
 		replicaMap(&map, this);
@@ -9358,7 +9403,7 @@ bool GameAirForce::readChunksAcs(fstream *p_file, chunkTab tab)
 	Aircraft	ac;
 	int		i;
 
-	for (i = 0; i < chunkTab.cnt; i++) {
+	for (i = 0; i < tab.cnt; i++) {
 		readChunkAc(p_file, tab);
 	}
 
@@ -9371,7 +9416,7 @@ bool GameAirForce::readChunks(fstream *p_file)
 // 	true if succeeded
 // 	false if failed
 //
-	result = false;
+	bool		result = false;
 	chunkTab	tab;
 
 	p_file->read((char*)&tab, sizeof(chunkTab));
@@ -9388,7 +9433,7 @@ bool GameAirForce::readChunks(fstream *p_file)
 		case AIRCRAFT:
 			result = readChunksAcs(p_file, tab);
 			break;
-		case LOG_AIRCRFT:
+		case LOG_AIRCRAFT:
 			break;
 		case FIRING:
 			break;
