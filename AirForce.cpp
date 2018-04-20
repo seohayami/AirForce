@@ -9311,6 +9311,7 @@ bool GameAirForce::onFileSaveAs()
 //	std::list<std::shared_ptr<MyEllipse>>::iterator itr;
 //
 	file.open(pszFilePath, ios::out | ios::binary);
+	// syntax: ios::out means application writes OUT to file
 	if (! file.is_open()) {
 		return FALSE;
 	}
@@ -9566,6 +9567,7 @@ bool GameAirForce::onFileOpenWholeGame(PWSTR pszFilePath)
 	firingEntry	bufFiring;
 
 	file.open(pszFilePath, ios::in | ios::binary);
+	// syntax: ios::in means application reads IN from file
 	if (! file.is_open()) {
 		return false;
 	}
