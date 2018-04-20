@@ -1629,7 +1629,7 @@ void PlayerAirForce::cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn)
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		if (m_ItrSelectedAircraft != mAircrafts.end() {
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
 			(*m_ItrSelectedAircraft)->m_stat = form.acStatus;
 			(*m_ItrSelectedAircraft)->m_heading = form.heading;
 			(*m_ItrSelectedAircraft)->m_speed = form.speed;
@@ -1638,7 +1638,7 @@ void PlayerAirForce::cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn)
 			(*m_ItrSelectedAircraft)->m_nose = form.nose;
 			(*m_ItrSelectedAircraft)->m_virCorX = form.virCorX;
 			(*m_ItrSelectedAircraft)->m_virCorY = form.virCorY;
-		} else }
+		} else {
 			MessageBox(NULL, 
       				L"cmdToPlayerSetAcstat: no aircraft selected..\n",
 				NULL,
@@ -1658,7 +1658,7 @@ void PlayerAirForce::cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn)
 		}
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			if ((*itr)->m_id == form.aircraftID) {
+			if ((*itr)->m_id == form.selectedAircraft) {
 				(*itr)->m_stat = form.acStatus;
 				(*itr)->m_heading = form.heading;
 				(*itr)->m_speed = form.speed;
@@ -1684,6 +1684,7 @@ void PlayerAirForce::cmdToPlayerGetManuvable(
 	p_rtn->manuvable = manuv;
 
 	p_rtn->aircraftID = (*itr)->m_id;
+	p_rtn->acStatus = (*itr)->m_stat;
 	p_rtn->virCorX = (*itr)->m_virCorX;
 	p_rtn->virCorY = (*itr)->m_virCorY;
 	p_rtn->heading = (*itr)->m_heading;
@@ -2447,6 +2448,8 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 		case REPLICA_AC:
 			cmdToPlayerREPLICA_AC(form, p_rtn);
 			break;
+		case REPLICA_LOG:
+			break;
 		default:
 			break;
 	}
@@ -2843,6 +2846,7 @@ void MapAirForce::reflectErasePlotByAcID(cmdForm form)
 	f.command = SET_ACSTAT;
 	f.playerID = ALL_PLAYERS;
 	f.selectedAircraft = form.aircraftID;
+	f.acStatus = form.acStatus;
 	f.heading = form.heading;
 	f.speed = form.speed;
 	f.alt = form.alt;
@@ -2863,6 +2867,12 @@ void MapAirForce::reflectErasePlotByAcID(cmdForm form)
 	}
 }
 
+void MapAirForce::repaintMap(cmdForm form) 
+{
+      	InvalidateRect(m_hwnd, NULL, FALSE);
+	UpdateWindow(m_hwnd);
+}
+
 void MapAirForce::cmdToMap(int cmd, cmdForm form, cmdForm *p_rtn)
 {
 	switch (cmd) {
@@ -2871,6 +2881,9 @@ void MapAirForce::cmdToMap(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 		case REFLECT_ERASE_PLOT:
 			reflectErasePlotByAcID(form);
+			break;
+		case REPAINT_MAP:
+			repaintMap(form);
 			break;
 		default:
 			break;
@@ -3803,6 +3816,9 @@ void MapAirForce::DrawManuvPath(cmdForm form)
 	int desVirCorX;
 	int desVirCorY;
 	int mp = tmpForm.speed;
+
+	srcPt = virCorToCenterF(srcVirCorX, srcVirCorY);
+	desPt = srcPt; 
 	
 	for (i = 0; form.manuv[i] != MANUV_EN; i++) {
 		switch (form.manuv[i]) {
@@ -7087,6 +7103,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case TAKE_LOGS:
 		case WRITE_FILE:
 		case REPLICA_AC:
+		case REPLICA_LOG:
 			if (form.playerID == SELECTED_PLAYER) {
 				if (mItrSelectedPlayer != mPlayers.end()) {
 					(*mItrSelectedPlayer)
@@ -8635,10 +8652,28 @@ void GameAirForce::logAircrafts(int gameTurn)
 	cmdToGame(TAKE_LOGS, f, NULL);
 }
 
+void GameAirForce::repaintMap(list<shared_ptr<MapAirForce>>::iterator itr)
+{
+	cmdForm	f;
+	f.command = REPAINT_MAP;
+
+	(*itr)->cmdToMap(REPAINT_MAP, f, NULL);
+}
+
+void GameAirForce::repaintMaps()
+{
+	list<shared_ptr<MapAirForce>>::iterator itr;
+
+	for (itr = mMaps.begin(); itr != mMaps.end(); itr++) {
+		repaintMap(itr);
+	}
+}
+
 void GameAirForce::onEnterGameModeMove()
 {
 	logAircrafts(m_gameTurn);
 	reflectAndErasePlots();
+	repaintMaps();
 }
 
 void GameAirForce::OnButtonProceed()
@@ -9275,7 +9310,7 @@ bool GameAirForce::onFileSaveAs()
 	fstream	file;
 //	std::list<std::shared_ptr<MyEllipse>>::iterator itr;
 //
-//	file.open(pszFilePath, ios::out | ios::binary);
+	file.open(pszFilePath, ios::out | ios::binary);
 	if (! file.is_open()) {
 		return FALSE;
 	}
@@ -9300,22 +9335,38 @@ void GameAirForce::replicaGame(GameAirForce *p_src, GameAirForce *p_des)
 	}
 	p_des->m_gameTurn = p_src->m_gameTurn;
 	p_des->m_gameMode = p_src->m_gameMode;
+
+	return;
 }
 
 
-bool GameAirForce::readChunksGame(fstream *p_file)
+bool GameAirForce::readChunksGame(fstream *p_file, GameAirForce *p_bufGame)
 {
 // Return:
 // 	true if succeeded
 // 	false if failed
 //
-	GameAirForce	g;
+// Pitfall: 180420
+//  in a statement of "read(&buf, sizeof(xxx))", buf must be kept
+//  (in other words, should not be disallocated) until file is 
+//  closed. Otherwise, exception of read access violation is thrown.
+//  functionA{ fileopen; call functionB}
+//  functionB{ GameAirForce g; read(&g, sizeof(GameAirForce)}
+//  would not work. When functionB exits(when g is disallocated),
+//  exception is thrown.
+//
+//	GameAirForce	g;
+//	GameAirForce	*p_g = new GameAirForce;
 
-	p_file->read((char*)&g, sizeof(GameAirForce));
+	p_file->read((char*)p_bufGame, sizeof(GameAirForce));
+//	(*p_file).read((char*)p_g, sizeof(GameAirForce));
 	if (p_file->fail()) {
 		return false;
 	}
-	replicaGame(&g, this);
+//	replicaGame(&g, this);
+	replicaGame(p_bufGame, this);
+
+//	delete p_g;
 
 	return true;
 }
@@ -9331,24 +9382,22 @@ void GameAirForce::replicaPlayer(PlayerAirForce *p_player, GameAirForce *p_des)
 	(**itr) = *p_player; 
 }
 
-bool GameAirForce::readChunksPlayers(fstream *p_file, chunkTab tab)
+bool GameAirForce::readChunksPlayers
+	(fstream *p_file, chunkTab tab, PlayerAirForce *p_bufPlayer)
 {
 // Return:
 // 	true if succeeded
 // 	false if failed
 //
-
-	PlayerAirForce	player;
 	int		i;
 
 	for (i = 0; i < tab.cnt; i++) {
-		p_file->read((char*)&player, sizeof(PlayerAirForce));
+		p_file->read((char*)p_bufPlayer, sizeof(PlayerAirForce));
 		if (p_file->fail()) {
 			return false;
 		}
-		replicaPlayer(&player, this);
+		replicaPlayer(p_bufPlayer, this);
 	}
-
 	return true;
 }
 
@@ -9363,28 +9412,27 @@ void GameAirForce::replicaMap(MapAirForce *p_map, GameAirForce *p_des)
 	(**itr) = *p_map; 
 }
 
-bool GameAirForce::readChunksMaps(fstream *p_file, chunkTab tab)
+bool GameAirForce::readChunksMaps(fstream *p_file, chunkTab tab, MapAirForce *p_bufMap) 
 {
 // Return:
 // 	true if succeeded
 // 	false if failed
 //
 
-	MapAirForce	map;
 	int		i;
 
 	for (i = 0; i < tab.cnt; i++) {
-		p_file->read((char*)&map, sizeof(MapAirForce));
+		p_file->read((char*)p_bufMap, sizeof(MapAirForce));
 		if (p_file->fail()) {
 			return false;
 		}
-		replicaMap(&map, this);
+		replicaMap(p_bufMap, this);
 	}
 
 	return true;
 }
 
-void GameAirForce::readChunkAc(fstream *p_file, chunkTab tab)
+void GameAirForce::readChunkAc(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft)
 {
 	cmdForm		f;
 	f.command = REPLICA_AC;
@@ -9393,49 +9441,110 @@ void GameAirForce::readChunkAc(fstream *p_file, chunkTab tab)
 	cmdToGame(REPLICA_AC, f, NULL);
 }
 
-bool GameAirForce::readChunksAcs(fstream *p_file, chunkTab tab)
+bool GameAirForce::readChunksAcs(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft)
 {
 // Return:
 // 	true if succeeded
 // 	false if failed
 //
-
-	Aircraft	ac;
 	int		i;
 
 	for (i = 0; i < tab.cnt; i++) {
-		readChunkAc(p_file, tab);
+		readChunkAc(p_file, tab, p_bufAircraft);
 	}
 
 	return true;
 }
 
-bool GameAirForce::readChunks(fstream *p_file)
+void GameAirForce::readChunkLog(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft)
+{
+	cmdForm		f;
+	f.command = REPLICA_LOG;
+	f.playerID = tab.playerID;
+	f.p_file = p_file;
+	cmdToGame(REPLICA_LOG, f, NULL);
+//	under construction: to implement REPLICA_LOG 
+}
+
+bool GameAirForce::readChunksLogs(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft)
+{
+// Return:
+// 	true if succeeded
+// 	false if failed
+//
+	int		i;
+
+	for (i = 0; i < tab.cnt; i++) {
+		readChunkLog(p_file, tab, p_bufAircraft);
+	}
+
+	return true;
+}
+
+void GameAirForce::replicaFiring(firingEntry *p_bufFiring, GameAirForce *p_des)
+{
+	shared_ptr<firingEntry> sp_new(new firingEntry);
+	list<std::shared_ptr<firingEntry>>::iterator itr;
+
+	m_firingEntries.push_front(sp_new);
+	itr = m_firingEntries.begin();
+
+	(**itr) = *p_bufFiring; 
+}
+
+bool GameAirForce::readChunksFirings(fstream *p_file, chunkTab tab, firingEntry *p_bufFiring)
+{
+// Return:
+// 	true if succeeded
+// 	false if failed
+//
+	int		i;
+
+	for (i = 0; i < tab.cnt; i++) {
+		p_file->read((char*)p_bufFiring, sizeof(firingEntry));
+		if (p_file->fail()) {
+			return false;
+		}
+		replicaFiring(p_bufFiring, this);
+	}
+	return true;
+}
+
+bool GameAirForce::readChunks
+	(fstream *p_file,
+	 chunkTab *p_tab,
+	 GameAirForce *p_bufGame,
+	 GameMap *p_bufMap,
+	 PlayerAirForce *p_bufPlayer,
+	 Aircraft *p_bufAircraft,
+	 firingEntry *p_bufFiring)
 {
 // Return:
 // 	true if succeeded
 // 	false if failed
 //
 	bool		result = false;
-	chunkTab	tab;
 
-	p_file->read((char*)&tab, sizeof(chunkTab));
-	switch (tab.type) {
+	p_file->read((char*)p_tab, sizeof(chunkTab));
+
+	switch (p_tab->type) {
 		case GAME:
-			result = readChunksGame(p_file);
-			break;
-		case PLAYER:
-			result = readChunksPlayers(p_file, tab);
+			result = readChunksGame(p_file, p_bufGame);
 			break;
 		case MAP:
-			result = readChunksMaps(p_file, tab);
+			result = readChunksMaps(p_file, *p_tab, p_bufMap);
+			break;
+		case PLAYER:
+			result = readChunksPlayers(p_file, *p_tab, p_bufPlayer);
 			break;
 		case AIRCRAFT:
-			result = readChunksAcs(p_file, tab);
+			result = readChunksAcs(p_file, *p_tab, p_bufAircraft);
 			break;
 		case LOG_AIRCRAFT:
+			result = readChunksLogs(p_file, *p_tab, p_bufAircraft);
 			break;
 		case FIRING:
+			result = readChunksFirings(p_file, *p_tab, p_bufFiring);
 			break;
 		default:
 			return false;
@@ -9444,6 +9553,93 @@ bool GameAirForce::readChunks(fstream *p_file)
 	return result;
 //	under construction
 //
+}
+
+bool GameAirForce::onFileOpenWholeGame(PWSTR pszFilePath)
+{
+	fstream file;
+	chunkTab	tab;
+	GameAirForce	bufGame;
+	MapAirForce	bufMap;
+	PlayerAirForce	bufPlayer;
+	Aircraft	bufAircraft;
+	firingEntry	bufFiring;
+
+	file.open(pszFilePath, ios::in | ios::binary);
+	if (! file.is_open()) {
+		return false;
+	}
+	do {
+		readChunks(&file, 
+			&tab, 
+			&bufGame, 
+			&bufMap, 
+			&bufPlayer, 
+			&bufAircraft,
+			&bufFiring);
+	} while(! file.eof());
+	file.close();
+
+	return true;
+
+}
+
+bool GameAirForce::isGameInProcess()
+{
+// Return:
+// 	false: user has just started this application.
+// 	      (no players/aircrafts are registered and 
+// 	       game turn = 1, and gameMode == GM_NOP)
+// 	true: otherwise
+
+	if (m_gameMode != GM_NOP) {
+		return true;
+	}
+	if (m_gameTurn != 1) {
+		return true;
+	}
+	if (! mPlayers.empty()) {
+		return true;
+	}
+	if (! mMaps.empty()) {
+		return true;
+	}
+	if (! m_firingEntries.empty()) {
+		return true;
+	}
+	return false;
+}
+
+bool GameAirForce::mayOverwriteWholeGame()
+{
+// Return:
+// 	true: user has just launched the application
+// 	      and select "Open" or
+// 	      user want to overwrite the current running game with
+// 	      saved game data
+// 	false: otherwise
+
+	int	btn;
+	if (isGameInProcess()) {
+		btn = MessageBox(NULL, 
+			L"You are overwriting the current game data.\nAre you sure?\n",
+			L"Waring\n",
+			MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2
+		);
+		switch (btn) {
+			case IDYES:
+				return true;
+				break;
+			case IDNO:
+				return false;
+				break;
+			default:
+				return false;
+				break;
+		}
+	} else {
+		return true;
+	}
 }
 
 bool GameAirForce::onFileOpen()
@@ -9478,7 +9674,11 @@ bool GameAirForce::onFileOpen()
 		}
 		CoUninitialize();
 	}
-
+	if (mayOverwriteWholeGame()) {
+		onFileOpenWholeGame(pszFilePath);
+	} else {
+	}
+/*
 	fstream file;
 //	std::list<std::shared_ptr<MyEllipse>>::iterator itr;
 
@@ -9490,7 +9690,6 @@ bool GameAirForce::onFileOpen()
 		readChunks(&file);
 	} while(! file.eof());
 
-/*
 	do {
 		MyEllipse tmp;
 		file.read((char*)&tmp, sizeof(MyEllipse));
@@ -9514,11 +9713,11 @@ bool GameAirForce::onFileOpen()
 	} while (! file.eof());
 
 	selection = ellipses.begin();
- */
 
 	file.close();
-	return TRUE;
+ */
 
+	return TRUE;
 }
 
 
@@ -9621,7 +9820,7 @@ LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 				}
 				break;
 			case IDM_FILEOPEN:
-				if (OnFileOpen()) {
+				if (onFileOpen()) {
 					OnPaint();
 				} else {
 					return EXIT_FAILURE;

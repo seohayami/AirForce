@@ -183,9 +183,11 @@ enum CommandToX {
 	TAKE_LOGS		= 22,
 	WRITE_FILE		= 23,
 	REPLICA_AC		= 24,
+	REPLICA_LOG		= 25,
 // cmdToMap commands
 	FINALIZE_MANUV		= 1001,
 	REFLECT_ERASE_PLOT	= 1002,
+	REPAINT_MAP		= 1003,
 };
 
 enum attackSide {
@@ -365,6 +367,7 @@ struct cmdForm {
 	int		*p_aircraft;
 	int		gameTurn;
 	fstream		*p_file;
+	int		*p_common;
 };
 
 struct ammo {
@@ -530,6 +533,7 @@ protected:
 	int checkIfNeedBreaks(cmdForm form);
   	void finalizeManuvByAcID(cmdForm form);
   	void reflectErasePlotByAcID(cmdForm form);
+	void repaintMap(cmdForm form);
 	void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv);
 	void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv);
 	void parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv);
@@ -1088,6 +1092,8 @@ protected:
 	void reflectAndErasePlot(cmdForm form);
 	void reflectAndErasePlots();	
 	void logAircrafts(int gameTurn);
+	void repaintMap(list<shared_ptr<MapAirForce>>::iterator itr);
+	void repaintMaps();
 	void onEnterGameModeMove();
 	void OnButtonProceed();
 	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
@@ -1116,14 +1122,31 @@ protected:
 	bool onFileSaveAs();
 	//----------------------
 	void replicaGame(GameAirForce *p_src, GameAirForce *p_des);
-	bool readChunksGame(fstream *p_file);
+	bool readChunksGame(fstream *p_file, GameAirForce *p_bufGame);
 	void replicaPlayer(PlayerAirForce *p_player, GameAirForce *p_des);
+	bool readChunksPlayers
+		(fstream *p_file, chunkTab tab, PlayerAirForce *p_bufPlayer);
 	bool readChunksPlayers(fstream *p_file, chunkTab tab);
 	void replicaMap(MapAirForce *p_map, GameAirForce *p_des);
-	bool readChunksMaps(fstream *p_file, chunkTab tab);
-	void readChunkAc(fstream *p_file, chunkTab tab);
-	bool readChunksAcs(fstream *p_file, chunkTab tab);
-	bool readChunks(fstream *p_file);
+	bool readChunksMaps(fstream *p_file, chunkTab tab, MapAirForce *p_bufMap);
+	void readChunkAc(fstream *p_file, chunkTab tab, Aircraft p_bufAircraft);
+	bool readChunksAcs(fstream *p_file, chunkTab tab, Aircraft p_bufAircraft);
+	void readChunkLog(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft);
+	bool readChunksLogs(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft);
+	void replicaFiring(firingEntry *p_bufFiring, GameAirForce *p_des);
+	bool readChunksFirings(
+		fstream *p_file, chunkTab tab, firingEntry *p_bufFiring);
+	bool readChunks(
+		fstream *p_file, 
+	 	chunkTab *p_tab,
+		GameAirForce *p_bufGame,
+		MapAirForce *p_bufMap,
+		PlayerAirForce *p_bufPlayer,
+		Aircraft *p_bufAircraft,
+		firingEntry *p_bufFiring);
+	bool onFileOpenWholeGame(PWSTR pszFilePath);
+	bool isGameInProcess();
+	bool mayOverwriteWholeGame();
 	bool onFileOpen();
 	//----------------------
 	void OnEditNewMapDialog();
