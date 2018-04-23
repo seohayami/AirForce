@@ -367,7 +367,7 @@ struct cmdForm {
 	int		*p_aircraft;
 	int		gameTurn;
 	fstream		*p_file;
-	int		*p_common;
+	UINT_PTR 	p_ptr; // pointer for general use
 };
 
 struct ammo {
@@ -661,6 +661,39 @@ public:
 	cmdForm			m_formFromMap;
 
   //------------------- public member functions ---------------------
+	MapAirForce::MapAirForce(MapAirForce &src)
+	{
+	// copy constructor
+		mPtrDWriteFactory = NULL;
+		mPtrTextFormat = NULL;
+		mHexVirCorOrgX = src.mHexVirCorOrgX;
+		mHexVirCorOrgY = src.mHexVirCorOrgY;
+		m_hexCntX = src.m_hexCntX;
+		m_hexCntY = src.m_hexCntY;
+		m_offsetX = src.m_offsetX;
+		m_offsetY = src.m_offsetY;
+		m_p_imagingFactory = NULL;
+		m_pBitmap = NULL;
+		m_realCorSelectedPrevX = src.m_realCorSelectedPrevX;
+		m_realCorSelectedPrevY = src.m_realCorSelectedPrevY;
+		m_evenSelectedPrev = src.m_evenSelectedPrev;
+		m_realCorSelectedX = src.m_realCorSelectedX; 
+		m_realCorSelectedY = src.m_realCorSelectedY;
+		m_evenSelected = src.m_evenSelected;
+		m_virCorSelectedX = src.m_virCorSelectedX;
+		m_virCorSelectedY = src.m_virCorSelectedY;
+		m_initComCon = src.m_initComCon;
+		m_mapStat = src.m_mapStat;
+		m_selectedFireArc = src.m_selectedFireArc;;
+		m_inFireArc = src.m_inFireArc;
+		m_virCorX_target = src.m_virCorX_target;
+		m_virCorY_target = src.m_virCorY_target;
+
+		mHexSize = src.mHexSize;
+		mp_ownerGame = NULL;
+		m_formFromMap = src.m_formFromMap;
+	}
+
   	void cmdToMap(int cmd, cmdForm form, cmdForm *p_rtn);
 	int getClock(cmdForm formS, cmdForm formD);
 	MapAirForce::MapAirForce() {
@@ -879,6 +912,51 @@ public:
 		m_maxDiveSpeed = MAX_INT;
 	};
 
+	Aircraft::Aircraft(Aircraft &src)
+	{
+	// copy constructor
+		int i;
+
+		m_pilotVision = src.m_pilotVision;
+		m_pilotReflex = src.m_pilotReflex;
+		m_pilotTraining = src.m_pilotTraining;
+		m_pilotExperience = src.m_pilotExperience;
+	 	m_maxDiveSpeed = src.m_maxDiveSpeed;
+
+		m_id = src.m_id;
+		mAircraftModel = src.mAircraftModel;
+		mPilotModel = src.mPilotModel;
+		StringCchCopyW(mAircraftName, STRSAFE_MAX_CCH, src.mAircraftName);
+		regStat	mAircraftRegStat = src.mAircraftRegStat;
+
+		m_p_bitmap = NULL;
+		m_p_bitmask = NULL;
+		m_p_bitmapBrush = NULL;
+		m_p_bitmaskBrush = NULL;
+
+		m_stat = src.m_stat;
+		m_hilight = src.m_hilight;
+		m_trayPixelX = src.m_trayPixelX;
+		m_trayPixelY = src.m_trayPixelY;
+		m_virCorX = src.m_virCorX; 
+		m_virCorY = src.m_virCorY;
+		m_heading = src.m_heading;
+		m_speed = src.m_speed;
+		m_alt = src.m_alt;
+		m_bank = src.m_bank;
+		m_nose = src.m_nose;
+		m_loaded = src.m_loaded;
+		m_manuv[80];
+		for (i = 0; i < 80; i++) {
+			m_manuv[i] = src.m_manuv[i];
+		}
+		m_damage = src.m_damage;
+		m_ammo = src.m_ammo;
+		m_logs.clear();
+		m_logGameTurn = src.m_logGameTurn;
+		mp_owner = NULL; // pointer to the owner player
+	}
+
 	BOOL Aircraft::HitTest(float x, float y);
 
 	HRESULT Aircraft::Draw(
@@ -991,6 +1069,7 @@ protected:
 		(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr_ac);
 	void cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn);
 	bool cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn);
+	bool cmdToPlayerREPLICA_LOG(cmdForm form, cmdForm *p_rtn);
 
 public:
   //------------------- public member variables ---------------------
@@ -1010,6 +1089,25 @@ public:
 		m_drawOriginY = 30.0f;
 		mp_ownerGame = NULL;
 		m_ItrSelectedAircraft = mAircrafts.end();
+	};
+
+	PlayerAirForce::PlayerAirForce(const PlayerAirForce &src)
+	{
+	// copy constructor
+		mPtrDWriteFactory = src.mPtrDWriteFactory;
+		mPtrTextFormat = src.mPtrTextFormat;
+		m_p_imagingFactory = src.m_p_imagingFactory;
+		m_ptMouse = src.m_ptMouse;
+		m_drawOriginX = src.m_drawOriginX;
+		m_drawOriginY = src.m_drawOriginY;
+	
+			mPlayerID = src.mPlayerID;
+		mPlayerRegStat = src.mPlayerRegStat;
+		//m_ItrSelectedAircraft = src.m_ItrSelectedAircraft;;
+		m_ItrSelectedAircraft = mAircrafts.end(); 
+		//list<shared_ptr<Aircraft>> mAircrafts;
+		mAircrafts.clear();
+		mp_ownerGame = src.mp_ownerGame;
 	};
 
 	void WhereToDraw(float *x, float *y);
@@ -1129,8 +1227,8 @@ protected:
 	bool readChunksPlayers(fstream *p_file, chunkTab tab);
 	void replicaMap(MapAirForce *p_map, GameAirForce *p_des);
 	bool readChunksMaps(fstream *p_file, chunkTab tab, MapAirForce *p_bufMap);
-	void readChunkAc(fstream *p_file, chunkTab tab, Aircraft p_bufAircraft);
-	bool readChunksAcs(fstream *p_file, chunkTab tab, Aircraft p_bufAircraft);
+	void readChunkAc(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft);
+	bool readChunksAcs(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft);
 	void readChunkLog(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft);
 	bool readChunksLogs(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft);
 	void replicaFiring(firingEntry *p_bufFiring, GameAirForce *p_des);
@@ -1191,7 +1289,7 @@ public:
 // DO NOT FORGET !!! to
 // instanciate static member variables
 // and do not forget to add namespace!!
-	int GameAirForce::mNewPlayerID; 
+	int GameAirForce::mNewPlayerID = 1; 
 //	regStat GameAirForce::mNewPlayerRegStat;
 	int GameAirForce::aircraftID[MAX_AIRCRAFTMODELNUMBER];
 //	list<shared_ptr<MapAirForce>>::iterator GameAirForce::mItrMaps;

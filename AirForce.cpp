@@ -2214,9 +2214,8 @@ void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
 
 bool PlayerAirForce::cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn)
 {
-	Aircraft	tmp;
 
-	(form.p_file)->read((char*)&tmp, sizeof(Aircraft));
+	(form.p_file)->read((char*)form.p_ptr, sizeof(Aircraft));
 	if ((form.p_file)->fail()) {
 		MessageBox(NULL, 
 	           L"cmdToPlayerREPLICA_AC: fail to read..\n",
@@ -2226,13 +2225,37 @@ bool PlayerAirForce::cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn)
 		return false;
 	}
 	
-	shared_ptr<Aircraft> sp_new(new Aircraft);
-	list<std::shared_ptr<Aircraft>>::iterator itr;
-
+	shared_ptr<Aircraft> sp_new(new Aircraft(*(Aircraft*)(form.p_ptr)));
+	sp_new->mp_owner = (UINT_PTR)this;
 	mAircrafts.push_front(sp_new);
-	itr = mAircrafts.begin();
 
-	(**itr) = tmp; 
+	return true;
+}
+
+bool PlayerAirForce::cmdToPlayerREPLICA_LOG(cmdForm form, cmdForm *p_rtn)
+{
+
+	(form.p_file)->read((char*)form.p_ptr, sizeof(Aircraft));
+	if ((form.p_file)->fail()) {
+		MessageBox(NULL, 
+	           L"cmdToPlayerREPLICA_LOG: fail to read..\n",
+		   NULL,
+		   MB_OKCANCEL | MB_ICONSTOP
+		);
+		return false;
+	}
+	
+	shared_ptr<Aircraft> sp_new(new Aircraft(*(Aircraft*)(form.p_ptr)));
+	sp_new->mp_owner = (UINT_PTR)this;
+
+
+	list<std::shared_ptr<Aircraft>>::iterator itr;
+	for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+		if ((*itr)->m_id = form.selectedAircraft) {
+			(*itr)->m_logs.push_front(sp_new);
+			break;
+		}
+	}
 
 	return true;
 }
@@ -2449,6 +2472,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			cmdToPlayerREPLICA_AC(form, p_rtn);
 			break;
 		case REPLICA_LOG:
+			cmdToPlayerREPLICA_LOG(form, p_rtn);
 			break;
 		default:
 			break;
@@ -7114,7 +7138,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 					itrPlayer != mPlayers.end(); itrPlayer++) {
 						(*itrPlayer)->cmdToPlayer(cmd, form, rtn);
 				}
-			} else if (form.playerID > 0) {
+			} else if (form.playerID >= 0) {
 				for (itrPlayer = mPlayers.begin(); 
 				     itrPlayer != mPlayers.end(); itrPlayer++) {
 					if ((*itrPlayer)->mPlayerID == form.playerID) {
@@ -9329,13 +9353,20 @@ void GameAirForce::replicaGame(GameAirForce *p_src, GameAirForce *p_des)
 {
 	int	i;
 
+	mItrMaps = mMaps.end();
+	mMaps.clear();
+	mItrPlayers = mPlayers.end();
+	m_firingEntries.clear();
 	p_des->mNewPlayerID = p_src->mNewPlayerID;
 	p_des->mNewPlayerRegStat = p_src->mNewPlayerRegStat;
 	for (i = 0; i < MAX_AIRCRAFTMODELNUMBER; i++) {
 		p_des->aircraftID[i] = p_src->aircraftID[i];
 	}
 	p_des->m_gameTurn = p_src->m_gameTurn;
+	m_hwndLV_FiringTable = NULL;
+
 	p_des->m_gameMode = p_src->m_gameMode;
+	mItrSelectedPlayer = mPlayers.end();	
 
 	return;
 }
@@ -9374,13 +9405,11 @@ bool GameAirForce::readChunksGame(fstream *p_file, GameAirForce *p_bufGame)
 
 void GameAirForce::replicaPlayer(PlayerAirForce *p_player, GameAirForce *p_des)
 {
-	shared_ptr<PlayerAirForce> sp_new(new PlayerAirForce);
+	shared_ptr<PlayerAirForce> sp_new(new PlayerAirForce(*p_player));
 	list<std::shared_ptr<PlayerAirForce>>::iterator itr;
 
 	mPlayers.push_front(sp_new);
 	itr = mPlayers.begin();
-
-	(**itr) = *p_player; 
 }
 
 bool GameAirForce::readChunksPlayers
@@ -9404,13 +9433,10 @@ bool GameAirForce::readChunksPlayers
 
 void GameAirForce::replicaMap(MapAirForce *p_map, GameAirForce *p_des)
 {
-	shared_ptr<MapAirForce> sp_new(new MapAirForce);
-	list<std::shared_ptr<MapAirForce>>::iterator itr;
+	shared_ptr<MapAirForce> sp_new(new MapAirForce(*p_map));
+	sp_new->mp_ownerGame = (LONG_PTR)this;
 
 	mMaps.push_front(sp_new);
-	itr = mMaps.begin();
-
-	(**itr) = *p_map; 
 }
 
 bool GameAirForce::readChunksMaps(fstream *p_file, chunkTab tab, MapAirForce *p_bufMap) 
@@ -9439,6 +9465,7 @@ void GameAirForce::readChunkAc(fstream *p_file, chunkTab tab, Aircraft *p_bufAir
 	f.command = REPLICA_AC;
 	f.playerID = tab.playerID;
 	f.p_file = p_file;
+	f.p_ptr = (UINT_PTR)p_bufAircraft;
 	cmdToGame(REPLICA_AC, f, NULL);
 }
 
@@ -9462,7 +9489,9 @@ void GameAirForce::readChunkLog(fstream *p_file, chunkTab tab, Aircraft *p_bufAi
 	cmdForm		f;
 	f.command = REPLICA_LOG;
 	f.playerID = tab.playerID;
+	f.selectedAircraft = tab.acID;
 	f.p_file = p_file;
+	f.p_ptr = (UINT_PTR)p_bufAircraft;
 	cmdToGame(REPLICA_LOG, f, NULL);
 //	under construction: to implement REPLICA_LOG 
 }
@@ -9515,7 +9544,7 @@ bool GameAirForce::readChunks
 	(fstream *p_file,
 	 chunkTab *p_tab,
 	 GameAirForce *p_bufGame,
-	 GameMap *p_bufMap,
+	 MapAirForce *p_bufMap,
 	 PlayerAirForce *p_bufPlayer,
 	 Aircraft *p_bufAircraft,
 	 firingEntry *p_bufFiring)
