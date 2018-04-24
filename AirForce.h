@@ -852,8 +852,8 @@ public:
 	ammo	m_ammo;
 	list<shared_ptr<Aircraft>>	m_logs;
 	int	m_logGameTurn;		// this variable is used for logging
-
-	UINT_PTR mp_owner; // pointer to the owner player
+	UINT_PTR mp_owner; 	// pointer to the owner player if used as Aircraft
+			  	// pointer to the owner aircraft if used as Logs
 
   //------------------- public member functions ---------------------
 	Aircraft::Aircraft() {

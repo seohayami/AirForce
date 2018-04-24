@@ -2116,6 +2116,7 @@ void PlayerAirForce::cmdToPlayerTakeLog
 	itr = (*itr_ac)->m_logs.begin();
 	(**itr) = **itr_ac; 
 	(*itr)->m_logGameTurn = form.gameTurn;
+	(*itr)->mp_owner = (UINT_PTR) (*itr_ac).get();	// log's mp_owner is Aircraft.
 
 }
 
