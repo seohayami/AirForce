@@ -8701,11 +8701,22 @@ void GameAirForce::onEnterGameModeMove()
 	repaintMaps();
 }
 
+void GameAirForce::onEnterGameModeFire()
+{
+	list<shared_ptr<firingEntry>>::iterator itr;
+	
+	for (itr = m_firingEntries.begin(); itr != m_firingEntries.end(); itr++) {
+		delete (*itr);
+	}
+	m_firingEntries.clear();
+}
+
 void GameAirForce::OnButtonProceed()
 {
 	switch (m_gameMode) {
 		case GM_NOP:
 			m_gameMode = GM_FIRE;
+			onEnterGameModeFire();
 			break;
 		case GM_FIRE:
 			onExitGameModeFire();
@@ -9738,6 +9749,7 @@ bool GameAirForce::onFileOpen()
 		CoUninitialize();
 	}
 	if (mayOverwriteWholeGame()) {
+		this.~GameAirForce(); 	// clear the current game by destructor.
 		onFileOpenWholeGame(pszFilePath);
 	} else {
 	}

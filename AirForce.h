@@ -1211,7 +1211,9 @@ protected:
 	void repaintMap(list<shared_ptr<MapAirForce>>::iterator itr);
 	void repaintMaps();
 	void onEnterGameModeMove();
+	void onEnterGameModeFire();
 	void OnButtonProceed();
+	//----------------------
 	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
 	int  insertFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index);
 	BOOL setFormAttackerFiringTable(HWND hwndListView, cmdForm *p_form, int index);
