@@ -957,6 +957,15 @@ public:
 		mp_owner = NULL; // pointer to the owner player
 	}
 
+	Aircraft::~Aircraft() {
+	// destructor
+		list<shared_ptr<Aircraft>>::iterator itr;
+		for (itr = m_logs.begin(); itr != m_logs.end(); itr++){
+			delete (*itr);
+		}
+		m_logs.clear();
+	}
+
 	BOOL Aircraft::HitTest(float x, float y);
 
 	HRESULT Aircraft::Draw(
@@ -1110,6 +1119,15 @@ public:
 		mp_ownerGame = src.mp_ownerGame;
 	};
 
+	PlayerAirForce::~PlayerAirForce() {
+	// desturctor
+		list<shared_ptr<Aircraft>>::iterator itr;
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			delete (*itr);
+		}
+		mAircrafts.clear();
+	}
+
 	void WhereToDraw(float *x, float *y);
 
 };
@@ -1261,6 +1279,28 @@ public:
 		mItrSelectedPlayer = mPlayers.end();
 		mItrMaps =mMaps.end();
 	};
+
+	GameAirForce::~GameAirForce() {
+	// destructor
+		list<shared_ptr<MapAirForce>>::iterator itrM;
+		for (itrM = mMaps.begin(); itrM != mMaps.end(); itrM++) {
+			delete (*itrM);
+		}
+		mMaps.clear();
+
+		list<shared_ptr<PlayerAirForce>>::iterator itrP;
+		for (itrP = mPlayers.begin(); itrP != mPlayers.end(); itrP++) {
+			delete (*itrP);
+		}
+		mPlayers.clear();
+
+		list<shared_ptr<firingEntry>>::iterator itrF;
+		for (itrF = m_firingEntries.begin(); itrF != m_firingEntries.end(); itrF++) {
+			delete (*itrF);
+		}
+		m_firingEntries.clear();
+	};
+
 	void setGameMode(GameMode mode);
 	void cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms);
 	static LRESULT CALLBACK GameAirForce::MyDlgProcNewPlayer(HWND hDlgWnd,

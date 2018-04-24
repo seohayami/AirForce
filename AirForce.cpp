@@ -9493,7 +9493,6 @@ void GameAirForce::readChunkLog(fstream *p_file, chunkTab tab, Aircraft *p_bufAi
 	f.p_file = p_file;
 	f.p_ptr = (UINT_PTR)p_bufAircraft;
 	cmdToGame(REPLICA_LOG, f, NULL);
-//	under construction: to implement REPLICA_LOG 
 }
 
 bool GameAirForce::readChunksLogs(fstream *p_file, chunkTab tab, Aircraft *p_bufAircraft)
@@ -9540,8 +9539,8 @@ bool GameAirForce::readChunksFirings(fstream *p_file, chunkTab tab, firingEntry 
 	return true;
 }
 
-bool GameAirForce::readChunks
-	(fstream *p_file,
+bool GameAirForce::readChunks(
+	 fstream *p_file,
 	 chunkTab *p_tab,
 	 GameAirForce *p_bufGame,
 	 MapAirForce *p_bufMap,
@@ -9556,6 +9555,9 @@ bool GameAirForce::readChunks
 	bool		result = false;
 
 	p_file->read((char*)p_tab, sizeof(chunkTab));
+	if (p_file->fail()) {
+		return false;
+	}
 
 	switch (p_tab->type) {
 		case GAME:
@@ -9581,38 +9583,67 @@ bool GameAirForce::readChunks
 	}
 
 	return result;
-//	under construction
-//
-}
+} // under construction: m_firingEntries size get unknown here.
 
 bool GameAirForce::onFileOpenWholeGame(PWSTR pszFilePath)
 {
-	fstream file;
+	fstream 	file;
 	chunkTab	tab;
-	GameAirForce	bufGame;
-	MapAirForce	bufMap;
-	PlayerAirForce	bufPlayer;
-	Aircraft	bufAircraft;
+//	GameAirForce	bufGame;
+//	MapAirForce	bufMap;
+//	PlayerAirForce	bufPlayer;
+//	Aircraft	bufAircraft;
+// Pitfall 180423: allocating file read buffer as class causes
+// read access violation exception when this function exits.
+// I'm not sure for the cause, but i guess
+// destructor of the class is called at that time
+// and because the class has a member of list and 
+// destructor tries to access the list???
+// So as a walkaround, I define buffer by malloc, not local variable 
+// of a class.
+//
+	char		*p_bufGame = (char*)malloc(sizeof(GameAirForce) *8);
+	char		*p_bufMap = (char*)malloc(sizeof(MapAirForce) *8);
+	char		*p_bufPlayer = (char*)malloc(sizeof(PlayerAirForce) *8);
+	char		*p_bufAircraft = (char*)malloc(sizeof(Aircraft) *8);
 	firingEntry	bufFiring;
+	bool		success = true;
 
-	file.open(pszFilePath, ios::in | ios::binary);
-	// syntax: ios::in means application reads IN from file
-	if (! file.is_open()) {
-		return false;
+	if (  (p_bufGame == NULL) 
+	   || (p_bufMap == NULL)
+	   || (p_bufPlayer == NULL)
+	   || (p_bufAircraft == NULL)) {
+		MessageBox(NULL, 
+  			L"Error: onFileOpenWholeGame: failed to malloc.\n",
+			NULL, 		// Caption "Error"
+			MB_OK | MB_ICONSTOP
+		);
+		success = false;
+	} else {
+		file.open(pszFilePath, ios::in | ios::binary);
+		// syntax: ios::in means application reads IN from file
+		if (! file.is_open()) {
+			success = false;
+		} else {
+			do {
+			result = readChunks(&file, 
+				&tab, 
+				(GameAirForce*) p_bufGame, 
+				(MapAirForce*) p_bufMap, 
+				(PlayerAirForce*) p_bufPlayer, 
+				(Aircraft*) p_bufAircraft,
+				&bufFiring);
+			} while(! file.eof() && result);
+			file.close();
+		}
 	}
-	do {
-		readChunks(&file, 
-			&tab, 
-			&bufGame, 
-			&bufMap, 
-			&bufPlayer, 
-			&bufAircraft,
-			&bufFiring);
-	} while(! file.eof());
-	file.close();
+	free(p_bufGame);
+	free(p_bufMap);
+	free(p_bufPlayer);
+	free(p_bufAircraft);
 
-	return true;
-
+	return success;
+// under construction : read access violation exception is thrown here.
 }
 
 bool GameAirForce::isGameInProcess()
