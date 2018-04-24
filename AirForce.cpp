@@ -8703,6 +8703,7 @@ void GameAirForce::onEnterGameModeMove()
 
 void GameAirForce::onEnterGameModeFire()
 {
+	// clear m_firingEntries
 	list<shared_ptr<firingEntry>>::iterator itr;
 	
 	for (itr = m_firingEntries.begin(); itr != m_firingEntries.end(); itr++) {
