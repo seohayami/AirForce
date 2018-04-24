@@ -231,6 +231,27 @@ int rollDice()
 	return rand() % 6 +1;
 }
 
+bool hasValidManuv(cmdForm form)
+{
+// Function:
+// 	check if form.manuv[80] has valid entries other than MANUV_DP
+// Return:
+// 	true if it has
+// 	false otherwise
+// 	
+	int	i;
+	bool	has = false;
+
+	for (i = 0; form.manuv[i] != MANUV_EN; i++) {
+		if (form.manuv[i] == MANUV_DP) {
+		} else {
+			has = true;
+			break;
+		}
+	}
+	return has;
+}
+
 /////////////////////////////////////////////////////////////////////////////////
 //
 //	Aircraft.cpp
@@ -3906,7 +3927,7 @@ void MapAirForce::DrawManuvPath(cmdForm form)
 		}
 	}
 	DrawLeaderLine(desPt, &tmpForm);
-	DrawPiece(tmpForm);
+	DrawPiece(tmpForm, 1.0f);
 
 }
 
@@ -4022,7 +4043,8 @@ HRESULT MapAirForce::DrawPiece(
 //		ID2D1RenderTarget *p_renderTgt,
 //		ID2D1SolidColorBrush *pBrush,
 //		IWICImagingFactory *p_factory,
-		cmdForm form
+		cmdForm form,
+		float	opacity
 		)
 {
 	const int unitA = mHexSize;
@@ -4115,7 +4137,7 @@ HRESULT MapAirForce::DrawPiece(
 			actX + actWidth,
 			actY + actHeight 
 		),
-		1.0f,
+		opacity,
 		D2D1_BITMAP_INTERPOLATION_MODE_NEAREST_NEIGHBOR,
 		NULL
 	);	
@@ -4164,12 +4186,18 @@ HRESULT MapAirForce::DrawPieces(
 	int i = 0;
 	D2D1_POINT_2F center;
 	D2D1_RECT_F rcBrushRect;
+	float opacity = 1.0f;	
 	
 	p_renderTgt->SetTransform(D2D1::Matrix3x2F::Identity());
 
 	for (i = 0; rtn[i].command != TAIL; i++) {
+		if (hasValidManuv(rtn[i]) {
+			opacity = 0.2f;
+		} else {
+			opacity = 1.0f;
+		}
 //		hr = DrawPiece(p_renderTgt, pBrush, p_factory, rtn[i]);
-		hr = DrawPiece(rtn[i]);
+		hr = DrawPiece(rtn[i], opacity);
 		center = virCorToCenterF(rtn[i].virCorX, rtn[i].virCorY);
 		rcBrushRect = D2D1::RectF(
 				center.x - unitAF * 1.5f,

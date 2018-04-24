@@ -583,7 +583,8 @@ protected:
 //		ID2D1RenderTarget *p_renderTgt,
 //		ID2D1SolidColorBrush *pBrush,
 //		IWICImagingFactory *p_factory,
-		cmdForm form
+		cmdForm form,
+		float	opacity
 		);
 	void 	OnPaintBitmap();
 	void 	paintAndExpand(
