@@ -4191,7 +4191,7 @@ HRESULT MapAirForce::DrawPieces(
 	p_renderTgt->SetTransform(D2D1::Matrix3x2F::Identity());
 
 	for (i = 0; rtn[i].command != TAIL; i++) {
-		if (hasValidManuv(rtn[i]) {
+		if (hasValidManuv(rtn[i])) {
 			opacity = 0.2f;
 		} else {
 			opacity = 1.0f;
@@ -8735,7 +8735,7 @@ void GameAirForce::onEnterGameModeFire()
 	list<shared_ptr<firingEntry>>::iterator itr;
 	
 	for (itr = m_firingEntries.begin(); itr != m_firingEntries.end(); itr++) {
-		delete (*itr);
+		delete (*itr).get();
 	}
 	m_firingEntries.clear();
 }
@@ -9430,16 +9430,16 @@ bool GameAirForce::readChunksGame(fstream *p_file, GameAirForce *p_bufGame)
 //
 //	GameAirForce	g;
 //	GameAirForce	*p_g = new GameAirForce;
+//	(*p_file).read((char*)p_g, sizeof(GameAirForce));
+//	replicaGame(&g, this);
+//	delete p_g;
 
 	p_file->read((char*)p_bufGame, sizeof(GameAirForce));
-//	(*p_file).read((char*)p_g, sizeof(GameAirForce));
 	if (p_file->fail()) {
 		return false;
 	}
-//	replicaGame(&g, this);
 	replicaGame(p_bufGame, this);
 
-//	delete p_g;
 
 	return true;
 }
@@ -9643,10 +9643,10 @@ bool GameAirForce::onFileOpenWholeGame(PWSTR pszFilePath)
 // So as a walkaround, I define buffer by malloc, not local variable 
 // of a class.
 //
-	char		*p_bufGame = (char*)malloc(sizeof(GameAirForce) *8);
-	char		*p_bufMap = (char*)malloc(sizeof(MapAirForce) *8);
-	char		*p_bufPlayer = (char*)malloc(sizeof(PlayerAirForce) *8);
-	char		*p_bufAircraft = (char*)malloc(sizeof(Aircraft) *8);
+	char		*p_bufGame = (char*)malloc(sizeof(GameAirForce) *4);
+	char		*p_bufMap = (char*)malloc(sizeof(MapAirForce) *4);
+	char		*p_bufPlayer = (char*)malloc(sizeof(PlayerAirForce) *4);
+	char		*p_bufAircraft = (char*)malloc(sizeof(Aircraft) *4);
 	firingEntry	bufFiring;
 	bool		success = true;
 
@@ -9667,14 +9667,14 @@ bool GameAirForce::onFileOpenWholeGame(PWSTR pszFilePath)
 			success = false;
 		} else {
 			do {
-			result = readChunks(&file, 
+			success = readChunks(&file, 
 				&tab, 
 				(GameAirForce*) p_bufGame, 
 				(MapAirForce*) p_bufMap, 
 				(PlayerAirForce*) p_bufPlayer, 
 				(Aircraft*) p_bufAircraft,
 				&bufFiring);
-			} while(! file.eof() && result);
+			} while(! file.eof() && success);
 			file.close();
 		}
 	}
@@ -9778,7 +9778,12 @@ bool GameAirForce::onFileOpen()
 		CoUninitialize();
 	}
 	if (mayOverwriteWholeGame()) {
-		this.~GameAirForce(); 	// clear the current game by destructor.
+//		this->GameAirForce::~GameAirForce(); 	// clear the current game by destructor.
+// pitfall 180424: i dont know why, but if you enable the statement above
+//  very weird error such as read access violation occurs at unexpeceted statement 
+//  such as mMaps.clear(); in replicaGame() function.
+//  anyway, do not enable the statement above!!!
+//
 		onFileOpenWholeGame(pszFilePath);
 	} else {
 	}

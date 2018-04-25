@@ -962,7 +962,7 @@ public:
 	// destructor
 		list<shared_ptr<Aircraft>>::iterator itr;
 		for (itr = m_logs.begin(); itr != m_logs.end(); itr++){
-			delete (*itr);
+			delete (*itr).get();
 		}
 		m_logs.clear();
 	}
@@ -1122,11 +1122,11 @@ public:
 
 	PlayerAirForce::~PlayerAirForce() {
 	// desturctor
-		list<shared_ptr<Aircraft>>::iterator itr;
-		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			delete (*itr);
-		}
-		mAircrafts.clear();
+//		list<shared_ptr<Aircraft>>::iterator itr;
+//		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+//			delete (*itr).get();
+//		}
+//		mAircrafts.clear();
 	}
 
 	void WhereToDraw(float *x, float *y);
@@ -1280,6 +1280,7 @@ public:
 		m_gameTurn = 1;
 		m_gameMode = GM_NOP;
 		mItrSelectedPlayer = mPlayers.end();
+		mMaps.clear();
 		mItrMaps =mMaps.end();
 	};
 
@@ -1287,19 +1288,27 @@ public:
 	// destructor
 		list<shared_ptr<MapAirForce>>::iterator itrM;
 		for (itrM = mMaps.begin(); itrM != mMaps.end(); itrM++) {
-			delete (*itrM);
+		//	delete (*itrM).get();
+		// pitfall 180425:
+		// because (*itr) is a shared_ptr, memory resource is 
+		// freed automatically when the last shared_ptr pointing 
+		// the resource is destroyed.
+		// Do not delete (*itr).get() 
+			(*itrM).reset();
 		}
 		mMaps.clear();
 
 		list<shared_ptr<PlayerAirForce>>::iterator itrP;
 		for (itrP = mPlayers.begin(); itrP != mPlayers.end(); itrP++) {
-			delete (*itrP);
+		//	delete (*itrP).get();
+			(*itrP).reset();
 		}
 		mPlayers.clear();
 
 		list<shared_ptr<firingEntry>>::iterator itrF;
 		for (itrF = m_firingEntries.begin(); itrF != m_firingEntries.end(); itrF++) {
-			delete (*itrF);
+		//	delete (*itrF).get();
+			(*itrF).reset();
 		}
 		m_firingEntries.clear();
 	};
