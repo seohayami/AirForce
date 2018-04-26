@@ -955,6 +955,7 @@ public:
 		m_damage = src.m_damage;
 		m_ammo = src.m_ammo;
 		//m_logs.clear();
+		//---- below may be incorrect. need experiment!!
 		//the statement above should not be enabled
 		//because the m_logs, which is a list of shared_ptr
 		//may be invalid (or broken).
@@ -1122,6 +1123,7 @@ public:
 		mPlayerRegStat = src.mPlayerRegStat;
 		m_ItrSelectedAircraft = mAircrafts.end(); 
 		//mAircrafts.clear();
+		//---- below may be incorrect. need experiment!!
 		//the statement above should not be enabled
 		//because the m_Aircrafts, which is a list of shared_ptr
 		//may be invalid (or broken).
