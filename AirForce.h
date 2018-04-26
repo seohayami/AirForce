@@ -1266,6 +1266,7 @@ protected:
 	bool onFileOpenWholeGame(PWSTR pszFilePath);
 	bool isGameInProcess();
 	bool mayOverwriteWholeGame();
+	void cleanupGame();
 	bool onFileOpen();
 	//----------------------
 	void OnEditNewMapDialog();

@@ -9420,6 +9420,7 @@ bool GameAirForce::readChunksGame(fstream *p_file, GameAirForce *p_bufGame)
 // 	false if failed
 //
 // Pitfall: 180420
+//  my experiment results suggested (but not sure) 
 //  in a statement of "read(&buf, sizeof(xxx))", buf must be kept
 //  (in other words, should not be disallocated) until file is 
 //  closed. Otherwise, exception of read access violation is thrown.
@@ -9745,6 +9746,27 @@ bool GameAirForce::mayOverwriteWholeGame()
 	}
 }
 
+void GameAirForce::cleanupGame()
+{
+	list<shared_ptr<MapAirForce>>::iterator itrM;
+	for (itrM = mMaps.begin(); itrM != mMaps.end(); itrM++) {
+		(*itrM).reset();
+	}
+	mMaps.clear();
+
+	list<shared_ptr<PlayerAirForce>>::iterator itrP;
+	for (itrP = mPlayers.begin(); itrP != mPlayers.end(); itrP++) {
+		(*itrP).reset();
+	}
+	mPlayers.clear();
+
+	list<shared_ptr<firingEntry>>::iterator itrF;
+	for (itrF = m_firingEntries.begin(); itrF != m_firingEntries.end(); itrF++) {
+		(*itrF).reset();
+	}
+	m_firingEntries.clear();
+}
+
 bool GameAirForce::onFileOpen()
 {
 	PWSTR pszFilePath;
@@ -9784,6 +9806,7 @@ bool GameAirForce::onFileOpen()
 //  such as mMaps.clear(); in replicaGame() function.
 //  anyway, do not enable the statement above!!!
 //
+		cleanupGame();
 		onFileOpenWholeGame(pszFilePath);
 	} else {
 	}
