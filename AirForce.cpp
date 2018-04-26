@@ -2237,6 +2237,8 @@ void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
 bool PlayerAirForce::cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn)
 {
 
+	int	i;
+
 	(form.p_file)->read((char*)form.p_ptr, sizeof(Aircraft));
 	if ((form.p_file)->fail()) {
 		MessageBox(NULL, 
@@ -2248,7 +2250,48 @@ bool PlayerAirForce::cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn)
 	}
 	
 	shared_ptr<Aircraft> sp_new(new Aircraft(*(Aircraft*)(form.p_ptr)));
+	// caution: copy constructor is used above.
+
+	// ---------- protected member variables ----------
+	//sp_new->m_pilotVision = (Aircraft*)(form.p_ptr)->m_pilotVision;
+	//sp_new->m_pilotReflex = (Aircraft*)(form.p_ptr)->m_pilotReflex;
+	//sp_new->m_pilotTraining = (Aircraft*)(form.p_ptr)->m_pilotTraining;
+	//sp_new->m_pilotExperience = (Aircraft*)(form.p_ptr)->m_pilotExperience;
+	//sp_new->m_maxDiveSpeed = (Aircraft*)(form.p_ptr)->m_maxDiveSpeed;
+	// ---------- public member variables ----------
+	//sp_new->m_id = (Aircraft*)(form.p_ptr)->m_id;
+	//sp_new->mAircraftModel = (Aircraft*)(form.p_ptr)->mAircraftModel;
+	//sp_new->mPilotModel = (Aircraft*)(form.p_ptr)->mPilotModel;
+	//StringCchCopyW(sp_new->mAircraftName, 
+	//	STRSAFE_MAX_CCH, 
+	//	(Aircraft*)(form.p_ptr)->mAircraftName);
+	//	Syntax:  StringCchCopy(p_destination, sizeOfDest, p_source)
+	//sp_new->mAircraftRegStat = (Aircraft*)(form.p_ptr)->mAircraftRegStat;
+	//sp_new->m_p_bitmap = (Aircraft*)(form.p_ptr)->m_p_bitmap;
+	//sp_new->m_p_bitmask = (Aircraft*)(form.p_ptr)->m_p_bitmask;
+	//sp_new->m_p_bitmapBrush = (Aircraft*)(form.p_ptr)->m_p_bitmapBrush;
+	//sp_new->m_p_bitmaskBrush = (Aircraft*)(form.p_ptr)->m_p_bitmaskBrush;
+	//sp_new->m_stat = (Aircraft*)(form.p_ptr)->m_stat;
+	//sp_new->m_hilight = (Aircraft*)(form.p_ptr)->m_hilight;
+	//sp_new->m_trayPixelX = (Aircraft*)(form.p_ptr)->m_trayPixelX;
+	//sp_new->m_trayPixelY = (Aircraft*)(form.p_ptr)->m_trayPixelY;
+	//sp_new->m_virCorX = (Aircraft*)(form.p_ptr)->m_virCorX;
+	//sp_new->m_virCorY = (Aircraft*)(form.p_ptr)->m_virCorY;
+	//sp_new->m_heading = (Aircraft*)(form.p_ptr)->m_heading;
+	//sp_new->m_speed = (Aircraft*)(form.p_ptr)->m_speed;
+	//sp_new->m_alt = (Aircraft*)(form.p_ptr)->m_alt;
+	//sp_new->m_bank = (Aircraft*)(form.p_ptr)->m_bank;
+	//sp_new->m_nose = (Aircraft*)(form.p_ptr)->m_nose;
+	//sp_new->m_loaded = (Aircraft*)(form.p_ptr)->m_loaded;
+	//for (i = 0; i < 80; i++) {
+	//	sp_new->m_manuv[i] = (Aircraft*)(form.p_ptr)->m_manuv[i];
+	//}
+	//sp_new->m_damage = (Aircraft*)(form.p_ptr)->m_damage;
+	//sp_new->m_ammo = (Aircraft*)(form.p_ptr)->m_ammo;
+	//sp_new->m_logs.clear();
+	//sp_new->m_logGameTurn = (Aircraft*)(form.p_ptr)->m_logGameTurn;
 	sp_new->mp_owner = (UINT_PTR)this;
+
 	mAircrafts.push_front(sp_new);
 
 	return true;
@@ -2268,12 +2311,13 @@ bool PlayerAirForce::cmdToPlayerREPLICA_LOG(cmdForm form, cmdForm *p_rtn)
 	}
 	
 	shared_ptr<Aircraft> sp_new(new Aircraft(*(Aircraft*)(form.p_ptr)));
-	sp_new->mp_owner = (UINT_PTR)this;
+	// caution: copy constructor is used above.
 
 
 	list<std::shared_ptr<Aircraft>>::iterator itr;
 	for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 		if ((*itr)->m_id = form.selectedAircraft) {
+			sp_new->mp_owner = (UINT_PTR)(*itr);
 			(*itr)->m_logs.push_front(sp_new);
 			break;
 		}
@@ -9393,10 +9437,13 @@ bool GameAirForce::onFileSaveAs()
 void GameAirForce::replicaGame(GameAirForce *p_src, GameAirForce *p_des)
 {
 	int	i;
-
+	// ---------- protected member variables ----------
+	// mPtrDWriteFactory = NULL;
+	// mPtrTextFormat = NULL;
 	mItrMaps = mMaps.end();
 	mMaps.clear();
 	mItrPlayers = mPlayers.end();
+	mPlayers.clear();
 	m_firingEntries.clear();
 	p_des->mNewPlayerID = p_src->mNewPlayerID;
 	p_des->mNewPlayerRegStat = p_src->mNewPlayerRegStat;
@@ -9405,7 +9452,7 @@ void GameAirForce::replicaGame(GameAirForce *p_src, GameAirForce *p_des)
 	}
 	p_des->m_gameTurn = p_src->m_gameTurn;
 	m_hwndLV_FiringTable = NULL;
-
+	// ---------- public member variables ----------
 	p_des->m_gameMode = p_src->m_gameMode;
 	mItrSelectedPlayer = mPlayers.end();	
 
@@ -9448,10 +9495,23 @@ bool GameAirForce::readChunksGame(fstream *p_file, GameAirForce *p_bufGame)
 void GameAirForce::replicaPlayer(PlayerAirForce *p_player, GameAirForce *p_des)
 {
 	shared_ptr<PlayerAirForce> sp_new(new PlayerAirForce(*p_player));
-	list<std::shared_ptr<PlayerAirForce>>::iterator itr;
+	// caution: copy constructor is used above.
+
+	// ---------- protected member variables ----------
+	// sp_new->mPtrDWriteFactory = NULL;
+	// sp_new->mPtrTextFormat = NULL;
+	// sp_new->m_p_imagingFactory = NULL;
+	// sp_new->m_ptMouse = p_player->m_ptMouse;
+	// sp_new->m_drawOriginX = p_player->m_drawOriginX;
+	// sp_new->m_drawOriginY = p_player->m_drawOriginY;
+	// ---------- public member variables ----------
+	// sp_new->mPlayerID = p_player->mPlayerID;
+	// sp_new->mPlayerRegStat = p_player->mPlayerRegStat;
+	// sp_new->m_ItrSelectedAircraft = mPlayers.end();
+	// mAircrafts.clear();
+	sp_new->mp_ownerGame = (LONG_PTR)this;
 
 	mPlayers.push_front(sp_new);
-	itr = mPlayers.begin();
 }
 
 bool GameAirForce::readChunksPlayers
@@ -9476,7 +9536,37 @@ bool GameAirForce::readChunksPlayers
 void GameAirForce::replicaMap(MapAirForce *p_map, GameAirForce *p_des)
 {
 	shared_ptr<MapAirForce> sp_new(new MapAirForce(*p_map));
+	// caution: copy constructor is used above.
+	
+	// ---------- protected member variables ----------
+	// sp_new->mPtrDWriteFactory = NULL;
+	// sp_new->mPtrTextFormat = NULL;
+	// sp_new->mHexVirCorOrgX = p_map->mHexVirCorOrgX;
+	// sp_new->mHexVirCorOrgY = p_map->mHexVirCorOrgY;
+	// sp_new->m_hexCntX = p_map->m_hexCntX;
+	// sp_new->m_hexCntY = p_map->m_hexCntY;
+	// sp_new->m_offsetX = p_map->m_offsetX;
+	// sp_new->m_offsetY = p_map->m_offsetY;
+	// sp_new->m_p_imaginaryFactory = NULL;
+	// sp_new->m_pBitmap = NULL;
+	// sp_new->m_realCorSelectedPrevX = p_map->m_realCorSelectedPrevX;
+	// sp_new->m_realCorSelectedPrevY = p_map->m_realCorSelectedPrevY;
+	// sp_new->m_evenSelectedPrev = p_map->m_evenSelectedPrev;
+	// sp_new->m_realCorSelectedX = p_map->m_realCorSelectedX;
+	// sp_new->m_realCorSelectedY = p_map->m_realCorSelectedY;
+	// sp_new->m_evenSelected = p_map->m_evenSelected;
+	// sp_new->m_virCorSelectedX = p_map->m_virCorSelectedX;
+	// sp_new->m_virCorSelectedY = p_map->m_virCorSelectedY;
+	// sp_new->m_initComCon = p_map->m_initComCon;
+	// sp_new->m_mapStat = p_map->m_mapStat;
+	// sp_new->m_selectedFireArc = p_map->m_selectedFireArc;
+	// sp_new->m_inFireArc = p_map->m_inFireArc;
+	// sp_new->m_virCorX_target = p_map->m_virCorX_target;
+	// sp_new->m_virCorY_target = p_map->m_virCorY_target;
+	// ---------- public member variables ----------
+	// sp_new->mHexSize = p_map->mHexSize;
 	sp_new->mp_ownerGame = (LONG_PTR)this;
+	// sp_new->m_formFromMap = p_map->m_formFromMap;
 
 	mMaps.push_front(sp_new);
 }

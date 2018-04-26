@@ -918,12 +918,13 @@ public:
 	// copy constructor
 		int i;
 
+		// ---------- protected member variables ----------
 		m_pilotVision = src.m_pilotVision;
 		m_pilotReflex = src.m_pilotReflex;
 		m_pilotTraining = src.m_pilotTraining;
 		m_pilotExperience = src.m_pilotExperience;
 	 	m_maxDiveSpeed = src.m_maxDiveSpeed;
-
+		// ---------- public member variables ----------
 		m_id = src.m_id;
 		mAircraftModel = src.mAircraftModel;
 		mPilotModel = src.mPilotModel;
@@ -953,7 +954,12 @@ public:
 		}
 		m_damage = src.m_damage;
 		m_ammo = src.m_ammo;
-		m_logs.clear();
+		//m_logs.clear();
+		//the statement above should not be enabled
+		//because the m_logs, which is a list of shared_ptr
+		//may be invalid (or broken).
+		//if broken, trying to m_logs.clear() may cause exceptions.
+		//
 		m_logGameTurn = src.m_logGameTurn;
 		mp_owner = NULL; // pointer to the owner player
 	}
@@ -962,7 +968,7 @@ public:
 	// destructor
 		list<shared_ptr<Aircraft>>::iterator itr;
 		for (itr = m_logs.begin(); itr != m_logs.end(); itr++){
-			delete (*itr).get();
+			(*itr).reset();
 		}
 		m_logs.clear();
 	}
@@ -1104,29 +1110,33 @@ public:
 	PlayerAirForce::PlayerAirForce(const PlayerAirForce &src)
 	{
 	// copy constructor
+		// ---------- protected member variables ----------
 		mPtrDWriteFactory = src.mPtrDWriteFactory;
 		mPtrTextFormat = src.mPtrTextFormat;
 		m_p_imagingFactory = src.m_p_imagingFactory;
 		m_ptMouse = src.m_ptMouse;
 		m_drawOriginX = src.m_drawOriginX;
 		m_drawOriginY = src.m_drawOriginY;
-	
-			mPlayerID = src.mPlayerID;
+		// ---------- protected member variables ----------
+		mPlayerID = src.mPlayerID;
 		mPlayerRegStat = src.mPlayerRegStat;
-		//m_ItrSelectedAircraft = src.m_ItrSelectedAircraft;;
 		m_ItrSelectedAircraft = mAircrafts.end(); 
-		//list<shared_ptr<Aircraft>> mAircrafts;
-		mAircrafts.clear();
-		mp_ownerGame = src.mp_ownerGame;
+		//mAircrafts.clear();
+		//the statement above should not be enabled
+		//because the m_Aircrafts, which is a list of shared_ptr
+		//may be invalid (or broken).
+		//if broken, trying to m_Aircrafts.clear() may cause exceptions.
+		//
+		mp_ownerGame = NULL;
 	};
 
 	PlayerAirForce::~PlayerAirForce() {
-	// desturctor
-//		list<shared_ptr<Aircraft>>::iterator itr;
-//		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-//			delete (*itr).get();
-//		}
-//		mAircrafts.clear();
+	// destructor
+		list<shared_ptr<Aircraft>>::iterator itr;
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			(*itr).reset();
+		}
+		mAircrafts.clear();
 	}
 
 	void WhereToDraw(float *x, float *y);
