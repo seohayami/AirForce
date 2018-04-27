@@ -364,7 +364,7 @@ struct cmdForm {
 	firingEntry	firingEnt;
 	int		silhouette;
 	int		fireAccuracy;
-	int		*p_aircraft;
+	int		*p_aircraft; // used for Map to access Aircraft member
 	int		gameTurn;
 	fstream		*p_file;
 	UINT_PTR 	p_ptr; // pointer for general use
@@ -665,15 +665,15 @@ public:
 	MapAirForce::MapAirForce(MapAirForce &src)
 	{
 	// copy constructor
-		mPtrDWriteFactory = NULL;
-		mPtrTextFormat = NULL;
+		mPtrDWriteFactory = src.mPtrDWriteFactory;
+		mPtrTextFormat = src.mPtrTextFormat;
 		mHexVirCorOrgX = src.mHexVirCorOrgX;
 		mHexVirCorOrgY = src.mHexVirCorOrgY;
 		m_hexCntX = src.m_hexCntX;
 		m_hexCntY = src.m_hexCntY;
 		m_offsetX = src.m_offsetX;
 		m_offsetY = src.m_offsetY;
-		m_p_imagingFactory = NULL;
+		m_p_imagingFactory = src.m_p_imagingFactory;
 		m_pBitmap = NULL;
 		m_realCorSelectedPrevX = src.m_realCorSelectedPrevX;
 		m_realCorSelectedPrevY = src.m_realCorSelectedPrevY;
@@ -954,13 +954,7 @@ public:
 		}
 		m_damage = src.m_damage;
 		m_ammo = src.m_ammo;
-		//m_logs.clear();
-		//---- below may be incorrect. need experiment!!
-		//the statement above should not be enabled
-		//because the m_logs, which is a list of shared_ptr
-		//may be invalid (or broken).
-		//if broken, trying to m_logs.clear() may cause exceptions.
-		//
+		m_logs.clear();
 		m_logGameTurn = src.m_logGameTurn;
 		mp_owner = NULL; // pointer to the owner player
 	}
@@ -1122,13 +1116,7 @@ public:
 		mPlayerID = src.mPlayerID;
 		mPlayerRegStat = src.mPlayerRegStat;
 		m_ItrSelectedAircraft = mAircrafts.end(); 
-		//mAircrafts.clear();
-		//---- below may be incorrect. need experiment!!
-		//the statement above should not be enabled
-		//because the m_Aircrafts, which is a list of shared_ptr
-		//may be invalid (or broken).
-		//if broken, trying to m_Aircrafts.clear() may cause exceptions.
-		//
+		mAircrafts.clear();
 		mp_ownerGame = NULL;
 	};
 
@@ -1279,6 +1267,7 @@ protected:
 	bool isGameInProcess();
 	bool mayOverwriteWholeGame();
 	void cleanupGame();
+	void createWindowsOfWholeGame();
 	bool onFileOpen();
 	//----------------------
 	void OnEditNewMapDialog();

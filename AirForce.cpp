@@ -1639,6 +1639,46 @@ gunPower Aircraft::ReferGunPower()
 	return rtn;
 }	
 
+void Aircraft::copyAcToForm(cmdForm *p_form)
+{
+// Function:
+// 	copy some of Aircraft member variables to cmdForm
+// Caution: 
+// 	command and playerID is NOT copied.
+// 	caller of this function must set these values.
+//
+	if (p_form == NULL) {
+		return;
+	}
+//	p_form->command = GET_AC;
+//	p_form->playerID = mPlayerID;
+	p_form->aircraftModel = mAircraftModel;
+	p_form->pilotModel = mPilotModel;
+	p_form->aircraftID = m_id;
+//	Syntax:  wcscpy(p_destination, p_source)
+	wcscpy(p_form->aircraftName, mAircraftName);
+	p_form->acStatus = m_stat;
+	p_form->virCorX = m_virCorX;
+	p_form->virCorY = m_virCorY;
+	p_form->heading = m_heading;
+	p_form->speed = m_speed;
+	p_form->speedCat = ReferSpeedIncTbl();
+	p_form->alt = m_alt;
+	p_form->bank = m_bank;
+	p_form->nose = m_nose;
+	p_form->loaded = m_loaded;
+	int j;
+	for (j = 0; j < 80; j++) {
+		p_form->manuv[j] = m_manuv[j];
+	}
+	p_form->silhouette 
+		= aircraftModels[mAircraftModel].silhouette;
+	p_form->fireAccuracy 
+		= aircraftModels[mAircraftModel].fireAccuracy;
+	p_form->dmg = m_damage;
+	p_form->p_aircraft = (int*)this;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //
 //	PlayerAirForce.cpp
@@ -1894,6 +1934,122 @@ void PlayerAirForce::cmdToPlayerDispatch(int cmd, cmdForm form, cmdForm *p_rtn)
 			MB_OKCANCEL | MB_ICONSTOP
 		);
 	}
+}
+
+bool PlayerAirForce::cmdToPlayerGET_DISPATCHED(
+		cmdForm form, 
+		cmdForm *p_rtn, 
+		list<shared_ptr<Aircraft>>::iterator itr)
+{
+// Return:
+// 	ture if aircraft data is written to form
+// 	false otherwise
+//
+	bool	got = false;
+
+	if (  (*itr)->m_stat == DISPATCHED
+	   || (*itr)->m_stat == DEPLOYED 
+	   || (*itr)->m_stat == SHOTDOWN) { 
+		(*itr)->copyAcToForm(&(p_rtn[i]));
+		p_rtn->command = form.command;
+		p_rtn->playerID = mPlayerID;
+		got = true;
+	}
+	return got;
+}
+
+void PlayerAirForce::cmdToPlayerGET_DISPATCHEDs(cmdForm form, cmdForm *p_rtn)
+{
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+	int i = 0;
+	BOOL	got = false;
+
+	if (form.selectedAircraft == SELECTED_AC) {
+		if (m_ItrSelectedAircraft != mAircrafts.end() {
+			got = cmdToPlayerGET_DISPATCHED(form, p_rtn, m_ItrSelectedAircraft);
+			if (got) {
+				i++;
+			}
+		}
+		p_rtn[i].command = TAIL;
+	} else if (form.selectedAircraft == ALL_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			got = cmdToPlayerGET_DISPATCHED(form, p_rtn, itr);
+			if (got) {
+				i++;
+			}
+		}
+		p_rtn[i].command = TAIL;
+	} else {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.selectedAircraft) {
+				got = cmdToPlayerGET_DISPATCHED(form, p_rtn, itr);
+				if (got) {
+					i++;
+				}
+			}
+		}
+		p_rtn[i].command = TAIL;
+	}
+}
+
+bool PlayerAirForce::cmdToPlayerGET_DISPATCHED(
+		cmdForm form, 
+		cmdForm *p_rtn, 
+		list<shared_ptr<Aircraft>>::iterator itr)
+{
+// Return:
+// 	ture if aircraft data is written to form
+// 	false otherwise
+//
+	bool	got = false;
+
+	if (  (*itr)->m_stat == DISPATCHED
+	   || (*itr)->m_stat == DEPLOYED 
+	   || (*itr)->m_stat == SHOTDOWN) { 
+		(*itr)->copyAcToForm(&(p_rtn[i]));
+		p_rtn->command = form.command;
+		p_rtn->playerID = mPlayerID;
+		got = true;
+	}
+	return got;
+}
+
+void PlayerAirForce::cmdToPlayerGET_DISPATCHEDs(cmdForm form, cmdForm *p_rtn)
+{
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+	int i = 0;
+	BOOL	got = false;
+
+	if (form.selectedAircraft == SELECTED_AC) {
+		if (m_ItrSelectedAircraft != mAircrafts.end() {
+			got = cmdToPlayerGET_DISPATCHED(form, p_rtn, m_ItrSelectedAircraft);
+			if (got) {
+				i++;
+			}
+		}
+		p_rtn[i].command = TAIL;
+	} else if (form.selectedAircraft == ALL_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			got = cmdToPlayerGET_DISPATCHED(form, p_rtn, itr);
+			if (got) {
+				i++;
+			}
+		}
+		p_rtn[i].command = TAIL;
+	} else {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.selectedAircraft) {
+				got = cmdToPlayerGET_DISPATCHED(form, p_rtn, itr);
+				if (got) {
+					i++;
+				}
+			}
+		}
+		p_rtn[i].command = TAIL;
+	}
+	// under construction
+	//
 }
 
 void PlayerAirForce::cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn)
@@ -2252,44 +2408,6 @@ bool PlayerAirForce::cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn)
 	shared_ptr<Aircraft> sp_new(new Aircraft(*(Aircraft*)(form.p_ptr)));
 	// caution: copy constructor is used above.
 
-	// ---------- protected member variables ----------
-	//sp_new->m_pilotVision = (Aircraft*)(form.p_ptr)->m_pilotVision;
-	//sp_new->m_pilotReflex = (Aircraft*)(form.p_ptr)->m_pilotReflex;
-	//sp_new->m_pilotTraining = (Aircraft*)(form.p_ptr)->m_pilotTraining;
-	//sp_new->m_pilotExperience = (Aircraft*)(form.p_ptr)->m_pilotExperience;
-	//sp_new->m_maxDiveSpeed = (Aircraft*)(form.p_ptr)->m_maxDiveSpeed;
-	// ---------- public member variables ----------
-	//sp_new->m_id = (Aircraft*)(form.p_ptr)->m_id;
-	//sp_new->mAircraftModel = (Aircraft*)(form.p_ptr)->mAircraftModel;
-	//sp_new->mPilotModel = (Aircraft*)(form.p_ptr)->mPilotModel;
-	//StringCchCopyW(sp_new->mAircraftName, 
-	//	STRSAFE_MAX_CCH, 
-	//	(Aircraft*)(form.p_ptr)->mAircraftName);
-	//	Syntax:  StringCchCopy(p_destination, sizeOfDest, p_source)
-	//sp_new->mAircraftRegStat = (Aircraft*)(form.p_ptr)->mAircraftRegStat;
-	//sp_new->m_p_bitmap = (Aircraft*)(form.p_ptr)->m_p_bitmap;
-	//sp_new->m_p_bitmask = (Aircraft*)(form.p_ptr)->m_p_bitmask;
-	//sp_new->m_p_bitmapBrush = (Aircraft*)(form.p_ptr)->m_p_bitmapBrush;
-	//sp_new->m_p_bitmaskBrush = (Aircraft*)(form.p_ptr)->m_p_bitmaskBrush;
-	//sp_new->m_stat = (Aircraft*)(form.p_ptr)->m_stat;
-	//sp_new->m_hilight = (Aircraft*)(form.p_ptr)->m_hilight;
-	//sp_new->m_trayPixelX = (Aircraft*)(form.p_ptr)->m_trayPixelX;
-	//sp_new->m_trayPixelY = (Aircraft*)(form.p_ptr)->m_trayPixelY;
-	//sp_new->m_virCorX = (Aircraft*)(form.p_ptr)->m_virCorX;
-	//sp_new->m_virCorY = (Aircraft*)(form.p_ptr)->m_virCorY;
-	//sp_new->m_heading = (Aircraft*)(form.p_ptr)->m_heading;
-	//sp_new->m_speed = (Aircraft*)(form.p_ptr)->m_speed;
-	//sp_new->m_alt = (Aircraft*)(form.p_ptr)->m_alt;
-	//sp_new->m_bank = (Aircraft*)(form.p_ptr)->m_bank;
-	//sp_new->m_nose = (Aircraft*)(form.p_ptr)->m_nose;
-	//sp_new->m_loaded = (Aircraft*)(form.p_ptr)->m_loaded;
-	//for (i = 0; i < 80; i++) {
-	//	sp_new->m_manuv[i] = (Aircraft*)(form.p_ptr)->m_manuv[i];
-	//}
-	//sp_new->m_damage = (Aircraft*)(form.p_ptr)->m_damage;
-	//sp_new->m_ammo = (Aircraft*)(form.p_ptr)->m_ammo;
-	//sp_new->m_logs.clear();
-	//sp_new->m_logGameTurn = (Aircraft*)(form.p_ptr)->m_logGameTurn;
 	sp_new->mp_owner = (UINT_PTR)this;
 
 	mAircrafts.push_front(sp_new);
@@ -2317,7 +2435,7 @@ bool PlayerAirForce::cmdToPlayerREPLICA_LOG(cmdForm form, cmdForm *p_rtn)
 	list<std::shared_ptr<Aircraft>>::iterator itr;
 	for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 		if ((*itr)->m_id = form.selectedAircraft) {
-			sp_new->mp_owner = (UINT_PTR)(*itr);
+			sp_new->mp_owner = (UINT_PTR)((*itr).get());
 			(*itr)->m_logs.push_front(sp_new);
 			break;
 		}
@@ -2355,6 +2473,8 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 
 		case GET_DISPATCHED:
+			cmdToPlayerGET_DISPATCHEDs(form, p_rtn);
+			break;
 		case GET_AC:
 		case GET_HIT:
 			if ((form.selectedAircraft == SELECTED_AC) 
@@ -3732,13 +3852,13 @@ BOOL MapAirForce::Create(
 		DWORD dwStyle
 	)
 {
-		DWORD dwExStyle = 0;
-		int x = CW_USEDEFAULT;
-		int y = CW_USEDEFAULT;
-		int nWidth = CW_USEDEFAULT;
-		int nHeight = CW_USEDEFAULT;
-		HWND hWndParent = 0;
-		HMENU hMenu = 0;
+	DWORD dwExStyle = 0;
+	int x = CW_USEDEFAULT;
+	int y = CW_USEDEFAULT;
+	int nWidth = CW_USEDEFAULT;
+	int nHeight = CW_USEDEFAULT;
+	HWND hWndParent = 0;
+	HMENU hMenu = 0;
 	WNDCLASS wc = { 0 };
 
 	wc.lpfnWndProc = WindowProc;
@@ -7378,8 +7498,8 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 						0,			//dwExStyle
 						CW_USEDEFAULT,		//x
 						CW_USEDEFAULT,		//y
-						500,		//nWidth
-						800,		//nHeight
+						500,			//nWidth
+						800,			//nHeight
 						0,			//hWndParent
 						0			//hMenu
 						);
@@ -9497,18 +9617,6 @@ void GameAirForce::replicaPlayer(PlayerAirForce *p_player, GameAirForce *p_des)
 	shared_ptr<PlayerAirForce> sp_new(new PlayerAirForce(*p_player));
 	// caution: copy constructor is used above.
 
-	// ---------- protected member variables ----------
-	// sp_new->mPtrDWriteFactory = NULL;
-	// sp_new->mPtrTextFormat = NULL;
-	// sp_new->m_p_imagingFactory = NULL;
-	// sp_new->m_ptMouse = p_player->m_ptMouse;
-	// sp_new->m_drawOriginX = p_player->m_drawOriginX;
-	// sp_new->m_drawOriginY = p_player->m_drawOriginY;
-	// ---------- public member variables ----------
-	// sp_new->mPlayerID = p_player->mPlayerID;
-	// sp_new->mPlayerRegStat = p_player->mPlayerRegStat;
-	// sp_new->m_ItrSelectedAircraft = mPlayers.end();
-	// mAircrafts.clear();
 	sp_new->mp_ownerGame = (LONG_PTR)this;
 
 	mPlayers.push_front(sp_new);
@@ -9538,35 +9646,7 @@ void GameAirForce::replicaMap(MapAirForce *p_map, GameAirForce *p_des)
 	shared_ptr<MapAirForce> sp_new(new MapAirForce(*p_map));
 	// caution: copy constructor is used above.
 	
-	// ---------- protected member variables ----------
-	// sp_new->mPtrDWriteFactory = NULL;
-	// sp_new->mPtrTextFormat = NULL;
-	// sp_new->mHexVirCorOrgX = p_map->mHexVirCorOrgX;
-	// sp_new->mHexVirCorOrgY = p_map->mHexVirCorOrgY;
-	// sp_new->m_hexCntX = p_map->m_hexCntX;
-	// sp_new->m_hexCntY = p_map->m_hexCntY;
-	// sp_new->m_offsetX = p_map->m_offsetX;
-	// sp_new->m_offsetY = p_map->m_offsetY;
-	// sp_new->m_p_imaginaryFactory = NULL;
-	// sp_new->m_pBitmap = NULL;
-	// sp_new->m_realCorSelectedPrevX = p_map->m_realCorSelectedPrevX;
-	// sp_new->m_realCorSelectedPrevY = p_map->m_realCorSelectedPrevY;
-	// sp_new->m_evenSelectedPrev = p_map->m_evenSelectedPrev;
-	// sp_new->m_realCorSelectedX = p_map->m_realCorSelectedX;
-	// sp_new->m_realCorSelectedY = p_map->m_realCorSelectedY;
-	// sp_new->m_evenSelected = p_map->m_evenSelected;
-	// sp_new->m_virCorSelectedX = p_map->m_virCorSelectedX;
-	// sp_new->m_virCorSelectedY = p_map->m_virCorSelectedY;
-	// sp_new->m_initComCon = p_map->m_initComCon;
-	// sp_new->m_mapStat = p_map->m_mapStat;
-	// sp_new->m_selectedFireArc = p_map->m_selectedFireArc;
-	// sp_new->m_inFireArc = p_map->m_inFireArc;
-	// sp_new->m_virCorX_target = p_map->m_virCorX_target;
-	// sp_new->m_virCorY_target = p_map->m_virCorY_target;
-	// ---------- public member variables ----------
-	// sp_new->mHexSize = p_map->mHexSize;
 	sp_new->mp_ownerGame = (LONG_PTR)this;
-	// sp_new->m_formFromMap = p_map->m_formFromMap;
 
 	mMaps.push_front(sp_new);
 }
@@ -9715,10 +9795,16 @@ bool GameAirForce::readChunks(
 	}
 
 	return result;
-} // under construction: m_firingEntries size get unknown here.
+} 
 
 bool GameAirForce::onFileOpenWholeGame(PWSTR pszFilePath)
 {
+// Function:
+// 	read the saved file, and replica the game
+// Return:
+// 	true: if it succeeds to allocate buffers
+// 	false: otherwise
+//
 	fstream 	file;
 	chunkTab	tab;
 //	GameAirForce	bufGame;
@@ -9733,11 +9819,30 @@ bool GameAirForce::onFileOpenWholeGame(PWSTR pszFilePath)
 // destructor tries to access the list???
 // So as a walkaround, I define buffer by malloc, not local variable 
 // of a class.
+// Pitfall 180426: Now i know the cause.
+// because the bufGame, for instance, receives broken list of share_prt 
+// of mPlayers or m_Maps(because what was written to file, is
+// sizeof GameAirForce/MapAirForce, just static part only)
+// when the function exits, the function calls destructor of list of 
+// shared_ptr. Because shared_ptr is a smart pointer, it tries to
+// check the ref. number and if it's zero, it tries to free the mem.
+// So it tries to follow the link, but the link is broken, and 
+// causes access violation.
+// So points is 
+//    (1) understand that read data's list structure is borken.
+//    (2) understant that shared_ptr tries to check its ref. count and 
+//        free the mem, when its life expires.
+//    (3) if (1) is the case, local variable of the read buffer should
+//        be declared not the class of GameAirForce, but just a 
+//        a bunch of memory. if compiler recognize it as GameAirForce class,
+//        it thinks that it has a list of shared_ptr and tries to
+//        follow the link of the list in order to check ref. counter, 
+//        which leads to access violation.
 //
-	char		*p_bufGame = (char*)malloc(sizeof(GameAirForce) *4);
-	char		*p_bufMap = (char*)malloc(sizeof(MapAirForce) *4);
-	char		*p_bufPlayer = (char*)malloc(sizeof(PlayerAirForce) *4);
-	char		*p_bufAircraft = (char*)malloc(sizeof(Aircraft) *4);
+	char		*p_bufGame = (char*)malloc(sizeof(GameAirForce) );
+	char		*p_bufMap = (char*)malloc(sizeof(MapAirForce) );
+	char		*p_bufPlayer = (char*)malloc(sizeof(PlayerAirForce) );
+	char		*p_bufAircraft = (char*)malloc(sizeof(Aircraft) );
 	firingEntry	bufFiring;
 	bool		success = true;
 
@@ -9775,7 +9880,6 @@ bool GameAirForce::onFileOpenWholeGame(PWSTR pszFilePath)
 	free(p_bufAircraft);
 
 	return success;
-// under construction : read access violation exception is thrown here.
 }
 
 bool GameAirForce::isGameInProcess()
@@ -9857,6 +9961,49 @@ void GameAirForce::cleanupGame()
 	m_firingEntries.clear();
 }
 
+void GameAirForce::createWindowsOfWholeGame()
+{
+	list<std::shared_ptr<PlayerAirForce>>::iterator itrP;
+
+	for (itrP = mPlayers.begin(); itrP != mPlayers.end(); itrP++) {
+		mItrSelectedPlayer = itrP;
+		(*itrP)->Create(
+			L"Player",		//lpWindowName 
+			WS_OVERLAPPEDWINDOW, 	//dwStyle
+			0,			//dwExStyle
+			CW_USEDEFAULT,		//x
+			CW_USEDEFAULT,		//y
+			500,			//nWidth
+			800,			//nHeight
+			0,			//hWndParent
+			0			//hMenu
+		);
+		ShowWindow(
+			(*mItrSelectedPlayer)->Window(), 
+			SW_SHOWDEFAULT
+		);
+	}
+
+	list<std::shared_ptr<MapAirForce>>::iterator itrM;
+
+	for (itrM = mMaps.begin(); itrM != mMaps.end(); itrM++) {
+		mItrMaps = itrM;
+		if (((*itrM)->Create(L"Map", 
+				WS_OVERLAPPEDWINDOW
+				| WS_HSCROLL
+				| WS_VSCROLL))) {
+			ShowWindow((*itrM)->Window(), SW_SHOWDEFAULT);
+		} else {
+			MessageBox(NULL, 
+				L"Error: createWindowsOfWholeGame: fail to create.\n",
+				NULL,
+				MB_OK | MB_ICONSTOP
+			);
+		}
+
+	}
+}
+
 bool GameAirForce::onFileOpen()
 {
 	PWSTR pszFilePath;
@@ -9895,9 +10042,14 @@ bool GameAirForce::onFileOpen()
 //  very weird error such as read access violation occurs at unexpeceted statement 
 //  such as mMaps.clear(); in replicaGame() function.
 //  anyway, do not enable the statement above!!!
+// pitfall 180426: now i know the cause
+//  calling ~GameAirForce exectes not only the statements of the ~GameAirForce function,
+//  but also other implict statements to destruct the object.
+//  calling ~destructor is, literally, to destruct the object.
 //
 		cleanupGame();
 		onFileOpenWholeGame(pszFilePath);
+		createWindowsOfWholeGame();
 	} else {
 	}
 /*
