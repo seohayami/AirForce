@@ -658,7 +658,7 @@ protected:
 			cmdForm *p_form, int distance);
 	int 	isHexReachableFwdPath(ResultHitTestHex *p_hex, 
 			cmdForm *p_form, int remainingMP);
-	void 	modifyManeuverableByParsedManuv(cmdForm *form);
+//	void 	modifyManeuverableByParsedManuv(cmdForm *form);
 	void 	MapAirForce::OnMouseMove
 			(int pixelX, int pixelY, DWORD flags);
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);

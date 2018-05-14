@@ -1742,6 +1742,8 @@ void Aircraft::aiCreatePlotTreeRoot()
 	f.playerID = SELECTED_PLAYER;
 	f.selectedAircraft = SELECTED_AC;
 	getManuvable(f, &rtn)  
+	int remainingMP =  parseManuv(&rtn);
+	modifyManeuverableByParsedManuv(&rtn);
 // under construction: need to create plot tree
 //      also need to call parseManuv() and modifyManuvableByParsedManuv()
 
@@ -6891,8 +6893,15 @@ int MapAirForce::isHexReachableFwdPath(ResultHitTestHex *p_hex, cmdForm *p_form,
 	return reachable;
 }
 
-
-void MapAirForce::modifyManeuverableByParsedManuv(cmdForm *form)
+// Pitfall 180514:
+// which function should be declared as member function
+// and which is not, must be considered with care.
+// Basically functions which access member variable(s)
+// should be defined as member functions, otherwise
+// they should be defined as non-member functions.
+//
+//void MapAirForce::modifyManeuverableByParsedManuv(cmdForm *form)
+void modifyManeuverableByParsedManuv(cmdForm *form)
 {
 	switch (form->bank) {
 		case BANK_IR:
