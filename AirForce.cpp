@@ -882,8 +882,8 @@ void Aircraft::getPrevTwoManuv(int *last, int *secondLast)
 	for (i = 0; m_manuv[i] != MANUV_EN; i++) {
 		if (((m_manuv[i] < 0) && (m_manuv[i] > MANUV_PW)) 
 		||  ((m_manuv[i] >= 0) && (m_manuv[i] < 20))){
-			*last = m_manuv[i];
 	        	*secondLast = *last;	
+			*last = m_manuv[i];
 		}
 	}
 
@@ -894,8 +894,8 @@ void Aircraft::getPrevTwoManuv(int *last, int *secondLast)
 			for (i = 0; (*itr)->m_manuv[i] != MANUV_EN; i++) {
 				if ((((*itr)->m_manuv[i] < 0) && ((*itr)->m_manuv[i] > MANUV_PW)) 
 				||  (((*itr)->m_manuv[i] >= 0) && ((*itr)->m_manuv[i] < 20))){
-					*last = m_manuv[i];
 	        			*secondLast = *last;	
+					*last = (*itr)->m_manuv[i];
 				}
 				if (*secondLast != MANUV_EN) {
 					return;
@@ -1342,11 +1342,12 @@ int Aircraft::getDamageCockpit()
 	} else if (aircraftModels[mAircraftModel].damageTolerance.cockpit[1] >= 0) { // single cockpit[1]
 		return m_damage.hit.cockpit[1];
 	} else {
-		MessageBox(NULL, 
- 			L"Error: illeal m_damage.tolerance.cockpit.: getDamageCockpit..\n",
-			NULL,
-			MB_OKCANCEL | MB_ICONSTOP
-		);
+//		MessageBox(NULL, 
+//			L"Error: illeal m_damage.tolerance.cockpit.: getDamageCockpit..\n",
+//			NULL,
+//			MB_OKCANCEL | MB_ICONSTOP
+//		);
+// since V1 has no cockpit, we must assume that no cockpit aircraft is possible.
 	}
 	return -1;	
 }
@@ -1679,6 +1680,79 @@ void Aircraft::copyAcToForm(cmdForm *p_form)
 	p_form->p_aircraft = (int*)this;
 }
 
+void Aircraft::getManuvable(
+	cmdForm form, 
+	cmdForm *p_rtn)  
+{
+	maneuverable manuv;
+
+	manuv = ReferManuvReqTbl();
+	modifyManeuverableByDamage(&manuv);
+	modifyManeuverableByPilot(&manuv);
+	
+	p_rtn->command = form.command;
+	p_rtn->manuvable = manuv;
+	p_rtn->aircraftID = m_id;
+	p_rtn->acStatus = m_stat;
+	p_rtn->virCorX = m_virCorX;
+	p_rtn->virCorY = m_virCorY;
+	p_rtn->heading = m_heading;
+	p_rtn->speed = m_speed;
+	p_rtn->alt = m_alt;
+	p_rtn->bank = m_bank;
+	p_rtn->nose = m_nose;
+	int i;
+	for (i = 0; i < 80; i++) {
+		p_rtn->manuv[i] = m_manuv[i];
+	}
+
+	return;
+}
+
+
+void deletePlotNode(plotNode *p_plotNode)
+{
+	list<*plotNode>::iterator itr;
+	for (itr =  ((*p_plotNode).p_plotNodes).begin(); 
+	     itr != ((*p_plotNode).p_plotNodes).end(); 
+	     itr++) {
+		deletePlotNode(*itr);
+	}
+	delete p_plotNode;
+}
+
+void Aircraft::aiClearPlotTree()
+{
+	list<*plotNode>::iterator itr;
+	for (itr = mp_plotNodes.begin(); itr != mp_plotNodes.end(); itr++) {
+		deletePlotNode(*itr);
+	}
+}
+
+void Aircraft::aiCreatePlotTreeRoot()
+{
+	plotNode	*p_new(new plotNode);
+
+	mp_plotNodes.push_front(p_new);
+
+	cmdForm		f;
+	cmdForm		rtn;
+
+	f.command = GET_MANUVABLE;
+	f.playerID = SELECTED_PLAYER;
+	f.selectedAircraft = SELECTED_AC;
+	getManuvable(f, &rtn)  
+// under construction: need to create plot tree
+//      also need to call parseManuv() and modifyManuvableByParsedManuv()
+
+}
+
+void Aircraft::aiCreatePlotTree()
+{
+	aiClearPlotTree();
+	aiCreatePlotTreeRoot();
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //
 //	PlayerAirForce.cpp
@@ -1738,12 +1812,14 @@ void PlayerAirForce::cmdToPlayerGetManuvable(
 	cmdForm *p_rtn, 
 	list<std::shared_ptr<Aircraft>>::iterator itr)
 {
-	maneuverable manuv;
+	(*itr)->getManuvable(form, p_rtn);
+/*	maneuverable manuv;
 	manuv = (*itr)->ReferManuvReqTbl();
 	(*itr)->modifyManeuverableByDamage(&manuv);
 	(*itr)->modifyManeuverableByPilot(&manuv);
+	
+	p_rtn->command = form.command;
 	p_rtn->manuvable = manuv;
-
 	p_rtn->aircraftID = (*itr)->m_id;
 	p_rtn->acStatus = (*itr)->m_stat;
 	p_rtn->virCorX = (*itr)->m_virCorX;
@@ -1757,7 +1833,7 @@ void PlayerAirForce::cmdToPlayerGetManuvable(
 	for (i = 0; i < 80; i++) {
 		p_rtn->manuv[i] = (*itr)->m_manuv[i];
 	}
-
+ */
 	return;
 }
 
@@ -1768,8 +1844,10 @@ void PlayerAirForce::cmdToPlayerGetManuvables(cmdForm form, cmdForm *p_rtn)
 	int i = 0;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		cmdToPlayerGetManuvable(form, p_rtn, m_ItrSelectedAircraft);
-		i++;
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			cmdToPlayerGetManuvable(form, p_rtn, m_ItrSelectedAircraft);
+			i++;
+		}
 		p_rtn[i].command = TAIL;
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
@@ -1802,7 +1880,9 @@ void PlayerAirForce::cmdToPlayerAppendManuvs(cmdForm form, cmdForm *p_rtn)
 	int i = 0;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		cmdToPlayerAppendManuv(form, m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			cmdToPlayerAppendManuv(form, m_ItrSelectedAircraft);
+		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			cmdToPlayerAppendManuv(form, itr);
@@ -1844,7 +1924,9 @@ void PlayerAirForce::cmdToPlayerDeleteManuvs(cmdForm form, cmdForm *p_rtn)
 	int i = 0;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		cmdToPlayerDeleteManuv(form, m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			cmdToPlayerDeleteManuv(form, m_ItrSelectedAircraft);
+		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			cmdToPlayerDeleteManuv(form, itr);
@@ -1859,6 +1941,8 @@ void PlayerAirForce::cmdToPlayerGetFireRange(
 {
 	firingArcRange	range;
 	gunPower	gPower;
+
+	p_rtn->command = form.command;
 
 	range = (*itr)->ReferFiringRange();
 	p_rtn->firingRange = range;
@@ -1876,8 +1960,10 @@ void PlayerAirForce::cmdToPlayerGetFireRanges(cmdForm form, cmdForm *p_rtn)
 	int i = 0;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		cmdToPlayerGetFireRange(form, p_rtn, m_ItrSelectedAircraft);
-		i++;
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			cmdToPlayerGetFireRange(form, p_rtn, m_ItrSelectedAircraft);
+			i++;
+		}
 		p_rtn[i].command = TAIL;
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
@@ -1946,11 +2032,14 @@ bool PlayerAirForce::cmdToPlayerGET_DISPATCHED(
 // 	false otherwise
 //
 	bool	got = false;
-
+	if (itr == mAircrafts.end()) {
+		got = false;
+		return got;
+	}
 	if (  (*itr)->m_stat == DISPATCHED
 	   || (*itr)->m_stat == DEPLOYED 
 	   || (*itr)->m_stat == SHOTDOWN) { 
-		(*itr)->copyAcToForm(&(p_rtn[i]));
+		(*itr)->copyAcToForm(p_rtn);
 		p_rtn->command = form.command;
 		p_rtn->playerID = mPlayerID;
 		got = true;
@@ -1965,35 +2054,33 @@ void PlayerAirForce::cmdToPlayerGET_DISPATCHEDs(cmdForm form, cmdForm *p_rtn)
 	BOOL	got = false;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		if (m_ItrSelectedAircraft != mAircrafts.end() {
-			got = cmdToPlayerGET_DISPATCHED(form, p_rtn, m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			got = cmdToPlayerGET_DISPATCHED(form, &p_rtn[i], m_ItrSelectedAircraft);
 			if (got) {
 				i++;
 			}
 		}
-		p_rtn[i].command = TAIL;
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			got = cmdToPlayerGET_DISPATCHED(form, p_rtn, itr);
+			got = cmdToPlayerGET_DISPATCHED(form, &(p_rtn[i]), itr);
 			if (got) {
 				i++;
 			}
 		}
-		p_rtn[i].command = TAIL;
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			if ((*itr)->m_id == form.selectedAircraft) {
-				got = cmdToPlayerGET_DISPATCHED(form, p_rtn, itr);
+				got = cmdToPlayerGET_DISPATCHED(form, &(p_rtn[i]), itr);
 				if (got) {
 					i++;
 				}
 			}
 		}
-		p_rtn[i].command = TAIL;
 	}
+	p_rtn[i].command = TAIL;
 }
 
-bool PlayerAirForce::cmdToPlayerGET_DISPATCHED(
+bool PlayerAirForce::cmdToPlayerGET_AC(
 		cmdForm form, 
 		cmdForm *p_rtn, 
 		list<shared_ptr<Aircraft>>::iterator itr)
@@ -2004,52 +2091,108 @@ bool PlayerAirForce::cmdToPlayerGET_DISPATCHED(
 //
 	bool	got = false;
 
-	if (  (*itr)->m_stat == DISPATCHED
-	   || (*itr)->m_stat == DEPLOYED 
-	   || (*itr)->m_stat == SHOTDOWN) { 
-		(*itr)->copyAcToForm(&(p_rtn[i]));
-		p_rtn->command = form.command;
-		p_rtn->playerID = mPlayerID;
-		got = true;
+	if (itr == mAircrafts.end()) {
+		got = false;
+		return got;
 	}
+	(*itr)->copyAcToForm(p_rtn);
+	p_rtn->command = form.command;
+	p_rtn->playerID = mPlayerID;
+	got = true;
+
 	return got;
 }
 
-void PlayerAirForce::cmdToPlayerGET_DISPATCHEDs(cmdForm form, cmdForm *p_rtn)
+void PlayerAirForce::cmdToPlayerGET_ACs(cmdForm form, cmdForm *p_rtn)
 {
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 	int i = 0;
 	BOOL	got = false;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		if (m_ItrSelectedAircraft != mAircrafts.end() {
-			got = cmdToPlayerGET_DISPATCHED(form, p_rtn, m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			got = cmdToPlayerGET_AC(form, &(p_rtn[i]), m_ItrSelectedAircraft);
 			if (got) {
 				i++;
 			}
 		}
-		p_rtn[i].command = TAIL;
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			got = cmdToPlayerGET_DISPATCHED(form, p_rtn, itr);
+			got = cmdToPlayerGET_AC(form, &(p_rtn[i]), itr);
 			if (got) {
 				i++;
 			}
 		}
-		p_rtn[i].command = TAIL;
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			if ((*itr)->m_id == form.selectedAircraft) {
-				got = cmdToPlayerGET_DISPATCHED(form, p_rtn, itr);
+				got = cmdToPlayerGET_AC(form, &(p_rtn[i]), itr);
 				if (got) {
 					i++;
 				}
 			}
 		}
-		p_rtn[i].command = TAIL;
 	}
-	// under construction
-	//
+	p_rtn[i].command = TAIL;
+}
+
+bool PlayerAirForce::cmdToPlayerGET_HIT(
+		cmdForm form, 
+		cmdForm *p_rtn, 
+		list<shared_ptr<Aircraft>>::iterator itr)
+{
+// Return:
+// 	ture if aircraft data is written to form
+// 	false otherwise
+//
+	bool	got = false;
+
+	if (itr == mAircrafts.end()) {
+		got = false;
+		return got;
+	}
+	if (form.virCorX == (*itr)->m_virCorX
+	 && form.virCorY == (*itr)->m_virCorY) {
+		(*itr)->copyAcToForm(p_rtn);
+		p_rtn->command = form.command;
+		p_rtn->playerID = mPlayerID;
+		got = true;
+	}
+
+	return got;
+}
+
+void PlayerAirForce::cmdToPlayerGET_HITs(cmdForm form, cmdForm *p_rtn)
+{
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+	int i = 0;
+	BOOL	got = false;
+
+	if (form.selectedAircraft == SELECTED_AC) {
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			got = cmdToPlayerGET_HIT(form, &(p_rtn[i]), m_ItrSelectedAircraft);
+			if (got) {
+				i++;
+			}
+		}
+	} else if (form.selectedAircraft == ALL_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			got = cmdToPlayerGET_HIT(form, &(p_rtn[i]), itr);
+			if (got) {
+				i++;
+			}
+		}
+	} else {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.selectedAircraft) {
+				got = cmdToPlayerGET_HIT(form, &(p_rtn[i]), itr);
+				if (got) {
+					i++;
+				}
+			}
+		}
+	}
+	p_rtn[i].command = TAIL;
 }
 
 void PlayerAirForce::cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn)
@@ -2127,11 +2270,12 @@ void PlayerAirForce::cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn)
 	BOOL	hit = false;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		hit = cmdToPlayerGetACID(form, p_rtn, m_ItrSelectedAircraft);
-		if (hit) {
-			i++;
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			hit = cmdToPlayerGetACID(form, p_rtn, m_ItrSelectedAircraft);
+			if (hit) {
+				i++;
+			}
 		}
-		p_rtn[i].command = TAIL;
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			hit = cmdToPlayerGetACID(form, &(p_rtn[i]), itr);
@@ -2139,7 +2283,6 @@ void PlayerAirForce::cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn)
 				i++;
 			}
 		}
-		p_rtn[i].command = TAIL;
 	} else {
 		MessageBox(NULL, 
 			L"cmdToPlayerGetACIDs: illeagal form..\n",
@@ -2147,6 +2290,7 @@ void PlayerAirForce::cmdToPlayerGetACIDs(cmdForm form, cmdForm *p_rtn)
 			MB_OKCANCEL | MB_ICONSTOP
 		);
 	}
+	p_rtn[i].command = TAIL;
 }
 
 void PlayerAirForce::cmdToPlayerUSE_AMMO(cmdForm form, cmdForm *p_rtn)
@@ -2185,7 +2329,9 @@ void PlayerAirForce::cmdToPlayerMODIFY_DAMAGE(cmdForm form, cmdForm *p_rtn)
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		cmdToPlayerMODIFY_DAMAGE_Ac(form, p_rtn, *m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			cmdToPlayerMODIFY_DAMAGE_Ac(form, p_rtn, *m_ItrSelectedAircraft);
+		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			cmdToPlayerMODIFY_DAMAGE_Ac(form, p_rtn, *itr);
@@ -2236,7 +2382,9 @@ void PlayerAirForce::cmdToPlayerUPDATE_ACSTAT(cmdForm form, cmdForm *p_rtn)
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		cmdToPlayerUPDATE_ACSTAT_Ac(form, p_rtn, *m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			cmdToPlayerUPDATE_ACSTAT_Ac(form, p_rtn, *m_ItrSelectedAircraft);
+		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			cmdToPlayerUPDATE_ACSTAT_Ac(form, p_rtn, *itr);
@@ -2269,7 +2417,9 @@ void PlayerAirForce::cmdToPlayerCLEAR_MANUVS(cmdForm form, cmdForm *p_rtn)
 	int i = 0;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		cmdToPlayerClearManuv(form, m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()){
+			cmdToPlayerClearManuv(form, m_ItrSelectedAircraft);
+		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			cmdToPlayerClearManuv(form, itr);
@@ -2302,7 +2452,9 @@ void PlayerAirForce::cmdToPlayerTAKE_LOGS(cmdForm form, cmdForm *p_rtn)
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		cmdToPlayerTakeLog(form, m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			cmdToPlayerTakeLog(form, m_ItrSelectedAircraft);
+		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			cmdToPlayerTakeLog(form, itr);
@@ -2373,8 +2525,10 @@ void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
 	std::list<std::shared_ptr<Aircraft>>::iterator itr;
 
 	if (form.selectedAircraft == SELECTED_AC) {
-		(form.p_file)->write((char*)&(tab), sizeof(tab));
-		writeAircraftToFile(form, m_ItrSelectedAircraft);
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			(form.p_file)->write((char*)&(tab), sizeof(tab));
+			writeAircraftToFile(form, m_ItrSelectedAircraft);
+		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			(form.p_file)->write((char*)&(tab), sizeof(tab));
@@ -2434,13 +2588,53 @@ bool PlayerAirForce::cmdToPlayerREPLICA_LOG(cmdForm form, cmdForm *p_rtn)
 
 	list<std::shared_ptr<Aircraft>>::iterator itr;
 	for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-		if ((*itr)->m_id = form.selectedAircraft) {
+		if ((*itr)->m_id == form.selectedAircraft) {
 			sp_new->mp_owner = (UINT_PTR)((*itr).get());
 			(*itr)->m_logs.push_front(sp_new);
 			break;
 		}
 	}
 
+	return true;
+}
+
+void PlayerAirForce::aiCreatePlotTrees(cmdForm form, cmdForm *p_rtn)
+{
+	list<std::shared_ptr<Aircraft>>::iterator itr;
+	if (form.selectedAircraft == SELECTED_AC) {
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			(*m_ItrSelectedAircraft)->aiCreatePlotTree();
+//			(form.p_file)->write((char*)&(tab), sizeof(tab));
+//			writeAircraftToFile(form, m_ItrSelectedAircraft);
+		}
+	} else if (form.selectedAircraft == ALL_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			(*itr)->aiCreatePlotTree();
+//			(form.p_file)->write((char*)&(tab), sizeof(tab));
+//			writeAircraftToFile(form, itr);
+		}
+	} else {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.selectedAircraft) {
+				(*itr)->aiCreatePlotTree();
+//				(form.p_file)->write((char*)&(tab), sizeof(tab));
+//				writeAircraftToFile(form, itr);
+			}
+		}
+	}
+}
+
+void PlayerAirForce::aiPlot(cmdForm form, cmdForm *p_rtn)
+{
+	aiCreatePlotTrees(form, p_rtn);
+}
+
+bool PlayerAirForce::cmdToPlayerAI_PLOT(cmdForm form, cmdForm *p_rtn)
+{
+	if (! m_ai) {
+		return false
+	}
+	aiPlot(form, p_rtn);
 	return true;
 }
 
@@ -2476,7 +2670,12 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			cmdToPlayerGET_DISPATCHEDs(form, p_rtn);
 			break;
 		case GET_AC:
+			cmdToPlayerGET_ACs(form, p_rtn);
+			break;
 		case GET_HIT:
+			cmdToPlayerGET_HITs(form, p_rtn);
+			break;
+/*
 			if ((form.selectedAircraft == SELECTED_AC) 
 			&& ( ((cmd == GET_DISPATCHED)
 				   && ((*m_ItrSelectedAircraft)->m_stat == DISPATCHED
@@ -2572,6 +2771,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 				cmdToPlayerGetAcAcID(form, p_rtn);
 			}
 			break;
+ */
 
 		case REPAINT:
 	        	InvalidateRect(m_hwnd, NULL, FALSE);
@@ -2611,7 +2811,7 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 					break;
 					// This break is important!!
 					// After removing and pushing the element,
-					// control goes back to the "for (itr = mAircrafs.begin(); itr != .....
+					// control goes back to the "for (itr = mAircrafts.begin(); itr != .....
 					// statement. But something is wrong with itr and
 					// error occurs. To avoid another itr test, break is necessary.
 					// 17/07/17
@@ -2659,6 +2859,9 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 		case REPLICA_LOG:
 			cmdToPlayerREPLICA_LOG(form, p_rtn);
+			break;
+		case AI_PLOT:
+			cmdToPlayerAI_PLOT(form, p_rtn);
 			break;
 		default:
 			break;
@@ -3298,7 +3501,10 @@ void MapAirForce::parseManuvTL(cmdForm *p_form, int *p_mp)
 	(p_form->manuvable.remainingMP) --;
 
 	int int_heading = (int)(p_form->heading);
-	int_heading = (int_heading - 60) % 360;
+	int_heading = (int_heading + 300) % 360;
+	// int_heading = (int_heading - 60) % 360;
+	// modulo may return negative value
+	// so dont use (int_heading - 60) % 360
 	p_form->heading = (float)int_heading;
 }
 
@@ -4345,33 +4551,35 @@ HRESULT MapAirForce::DrawPieces(
 		((GameAirForce*)mp_ownerGame)->cmdToGame(GET_DISPATCHED, dummy, rtn);
 	}
 
-	NumerateStackNum(rtn);
+	if (rtn->command != TAIL) {
+		NumerateStackNum(rtn);
 
-	int i = 0;
-	D2D1_POINT_2F center;
-	D2D1_RECT_F rcBrushRect;
-	float opacity = 1.0f;	
+		int i = 0;
+		D2D1_POINT_2F center;
+		D2D1_RECT_F rcBrushRect;
+		float opacity = 1.0f;	
+		
+		p_renderTgt->SetTransform(D2D1::Matrix3x2F::Identity());
 	
-	p_renderTgt->SetTransform(D2D1::Matrix3x2F::Identity());
-
-	for (i = 0; rtn[i].command != TAIL; i++) {
-		if (hasValidManuv(rtn[i])) {
-			opacity = 0.2f;
-		} else {
-			opacity = 1.0f;
+		for (i = 0; rtn[i].command != TAIL; i++) {
+			if (hasValidManuv(rtn[i])) {
+				opacity = 0.2f;
+			} else {
+				opacity = 1.0f;
+			}
+//			hr = DrawPiece(p_renderTgt, pBrush, p_factory, rtn[i]);
+			hr = DrawPiece(rtn[i], opacity);
+			center = virCorToCenterF(rtn[i].virCorX, rtn[i].virCorY);
+			rcBrushRect = D2D1::RectF(
+					center.x - unitAF * 1.5f,
+					center.y - root3AF / 2.0f,
+					center.x + unitAF * 1.5f,
+					center.y + root3AF / 2.0f
+			);
+	
+			DrawLeaderLine(center, &rtn[i]);
+			DrawManuvPath(rtn[i]);
 		}
-//		hr = DrawPiece(p_renderTgt, pBrush, p_factory, rtn[i]);
-		hr = DrawPiece(rtn[i], opacity);
-		center = virCorToCenterF(rtn[i].virCorX, rtn[i].virCorY);
-		rcBrushRect = D2D1::RectF(
-				center.x - unitAF * 1.5f,
-				center.y - root3AF / 2.0f,
-				center.x + unitAF * 1.5f,
-				center.y + root3AF / 2.0f
-		);
-
-		DrawLeaderLine(center, &rtn[i]);
-		DrawManuvPath(rtn[i]);
 	}
 	return hr;
 }
@@ -4653,10 +4861,14 @@ void MapAirForce::drawFiring(cmdForm form)
 	if (formT[0].command == TAIL) {
 		return;
 	}
-	drawArrowHexToHex(formA[0].virCorX,
+	if (mp_ownerGame) {
+		if (((GameAirForce*)mp_ownerGame)->m_gameMode == GM_FIRE) {
+			drawArrowHexToHex(formA[0].virCorX,
 			  formA[0].virCorY,
 			  formT[0].virCorX,
 			  formT[0].virCorY);
+		}
+	}
 }
 
 
@@ -6319,13 +6531,15 @@ void MapAirForce::OnLButtonUp(int pixelX, int pixelY, DWORD flags)
 		form2.selectedAircraft = SELECTED_AC;
 		((GameAirForce*)mp_ownerGame)->cmdToGame(GET_AC, form2, rtn);
 
-		rtn[0].command = DISPATCH;
-		rtn[0].acStatus = DISPATCHED;
-		rtn[0].virCorX = m_virCorSelectedX;
-		rtn[0].virCorY = m_virCorSelectedY;
-		((GameAirForce*)mp_ownerGame)->cmdToGame(DISPATCH, rtn[0], NULL);
-//        	InvalidateRect(m_hwnd, NULL, FALSE);
-		m_mapStat == NOT_SELECTED;
+		if (rtn->command != TAIL) {
+			rtn[0].command = DISPATCH;
+			rtn[0].acStatus = DISPATCHED;
+			rtn[0].virCorX = m_virCorSelectedX;
+			rtn[0].virCorY = m_virCorSelectedY;
+			((GameAirForce*)mp_ownerGame)->cmdToGame(DISPATCH, rtn[0], NULL);
+//     		   	InvalidateRect(m_hwnd, NULL, FALSE);
+			m_mapStat == NOT_SELECTED;
+		}
 	}
 
 	if (m_mapStat == MAP_FIRE_AIM) {
@@ -6752,6 +6966,9 @@ void MapAirForce::OnMouseMove(int pixelX, int pixelY, DWORD flags)
 		form.playerID = SELECTED_PLAYER;
 		form.selectedAircraft = SELECTED_AC;
 		((GameAirForce*)mp_ownerGame)->cmdToGame(GET_MANUVABLE, form, rtn);
+		if (rtn->command == TAIL) {
+			return;
+		}
 
 		int remainingMP =  parseManuv(rtn);
 
@@ -7237,9 +7454,11 @@ void GameAirForce::cmdGetFirings(cmdForm form, cmdForm *p_rtnForms)
 		for (itrFiringEnt = m_firingEntries.begin(); 
 		itrFiringEnt != m_firingEntries.end(); 
 		itrFiringEnt++) {
-			p_rtnForms[i].command = GET_FIRINGS;
-			p_rtnForms[i].firingEnt = **itrFiringEnt;
-			i++;
+			if ((*itrFiringEnt)->gameTurn == m_gameTurn) {
+				p_rtnForms[i].command = GET_FIRINGS;
+				p_rtnForms[i].firingEnt = **itrFiringEnt;
+				i++;
+			}
 		}
 		p_rtnForms[i].command = TAIL;
 	} else if (form.selectedAircraft >= 0) {
@@ -7247,9 +7466,11 @@ void GameAirForce::cmdGetFirings(cmdForm form, cmdForm *p_rtnForms)
 		itrFiringEnt != m_firingEntries.end(); 
 		itrFiringEnt++) {
 			if ((*itrFiringEnt)->acIDattacker == form.selectedAircraft) {
-				p_rtnForms[i].command = GET_FIRINGS;
-				p_rtnForms[i].firingEnt = **itrFiringEnt;
-			i++;
+				if ((*itrFiringEnt)->gameTurn == m_gameTurn) {
+					p_rtnForms[i].command = GET_FIRINGS;
+					p_rtnForms[i].firingEnt = **itrFiringEnt;
+				i++;
+				}
 			}
 		}
 		p_rtnForms[i].command = TAIL;
@@ -7321,6 +7542,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case WRITE_FILE:
 		case REPLICA_AC:
 		case REPLICA_LOG:
+		case AI_PLOT:
 			if (form.playerID == SELECTED_PLAYER) {
 				if (mItrSelectedPlayer != mPlayers.end()) {
 					(*mItrSelectedPlayer)
@@ -7370,7 +7592,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 						break;
 						// This break is important!!
 						// After removing and pushing the element,
-						// control goes back to the "for (itr = mAircrafs.begin(); itr != .....
+						// control goes back to the "for (itr = mAircrafts.begin(); itr != .....
 						// statement. But something is wrong with itr and
 						// error occurs. To avoid another itr test, break is necessary.
 						// 17/07/17
@@ -7397,7 +7619,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 						break;
 						// This break is important!!
 						// After removing and pushing the element,
-						// control goes back to the "for (itr = mAircrafs.begin(); itr != .....
+						// control goes back to the "for (itr = mAircrafts.begin(); itr != .....
 						// statement. But something is wrong with itr and
 						// error occurs. To avoid another itr test, break is necessary.
 						// 17/07/17
@@ -7476,6 +7698,34 @@ LRESULT CALLBACK GameAirForce::MyDlgProcNewPlayer(HWND hDlgWnd,
 
 }
 
+void GameAirForce::handleDlgNewPlayerInit(HWND hDlgWnd,
+		UINT msg,
+		WPARAM wParam,
+		LPARAM lParam)
+{
+	mNewPlayerRegStat = NOTREG;
+
+	wchar_t  x[32];
+	wsprintf(x, L"%03d\n", mNewPlayerID);
+	Static_SetText(GetDlgItem(hDlgWnd, IDC_PLAYERID), (LPTSTR)x);
+					   
+	int	i;
+	for (i = 0; i < 4; i++) {
+		SendMessage(GetDlgItem(hDlgWnd, IDC_LIST2), 
+		       LB_INSERTSTRING, 
+		       (WPARAM)i,
+		       (LPARAM)pilotModels[i].name);
+	}
+	for (i = 0; i < 3; i++) {
+		SendMessage(GetDlgItem(hDlgWnd, IDC_COMBO1), 
+		       CB_ADDSTRING, 
+		       0,
+		       (LPARAM)liststrNationality[i]);
+	}
+
+	Button_SetCheck(GetDlgItem(hDlgWnd, IDC_RADIO1),
+			BST_CHECKED);
+}
 
 LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
        					UINT msg,
@@ -7579,7 +7829,7 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 							       0,
 							       0);
 							if (r == 0) {
-								for (i = 0; i < 6; i++) {
+								for (i = 0; i < MAX_AIRCRAFTMODELNUMBER; i++) {
 									if (aircraftModels[i].nation == BRITAIN){
 										SendMessage(GetDlgItem(hDlgWnd, IDC_LIST1), 
 											       LB_ADDSTRING, 
@@ -7597,7 +7847,7 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 								}
 							}
 							if (r == 1) {
-								for (i = 0; i < 6; i++) {
+								for (i = 0; i < MAX_AIRCRAFTMODELNUMBER; i++) {
 									if (aircraftModels[i].nation == GERMAN){
 										SendMessage(GetDlgItem(hDlgWnd, IDC_LIST1), 
 											       LB_ADDSTRING, 
@@ -7615,7 +7865,7 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 								}
 							}
 							if (r == 2) {
-								for (i = 0; i < 6; i++) {
+								for (i = 0; i < MAX_AIRCRAFTMODELNUMBER; i++) {
 									if (aircraftModels[i].nation == USA){
 										SendMessage(GetDlgItem(hDlgWnd, IDC_LIST1), 
 											       LB_ADDSTRING, 
@@ -7641,6 +7891,7 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 			break;
 		case WM_INITDIALOG:
 			{
+/*
 			mNewPlayerRegStat = NOTREG;
 //			string x = to_string(mNewPlayerID);
 			wchar_t  x[32];
@@ -7664,6 +7915,8 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 						       0,
 						       (LPARAM)liststrNationality[i]);
 			}
+ */
+			handleDlgNewPlayerInit(hDlgWnd, msg, wParam, lParam);
 			break;
 			}
 		default:
@@ -7917,8 +8170,14 @@ void GameAirForce::OnPaint()
 		EndPaint(m_hwnd, &ps);
 	}
 //	HWND hwndListView = createListView(m_hwnd, 500, 500);
-//	ShowWindow(hwndListView, SW_SHOW);
+//	ShowWindow(m_hwndButtonProceed, SW_SHOWDEFAULT);
+//	ShowWindow(m_hwndLV_FiringTable, SW_SHOWDEFAULT);
+//	insertColumnsFiringTable(m_hwndLV_FiringTable);
 //	insertItemsFiringTable(m_hwndLV_FiringTable);
+// pitfall 180430:
+// inserting something every time OnPaint is called is NOT TO BE DONE.
+// to show a window, InvalidateRect is an effecitive way,
+// not ShowWindow.
 }
 
 int GameAirForce::referHitTableWing(int column, int die)
@@ -8895,6 +9154,7 @@ void GameAirForce::onEnterGameModeMove()
 
 void GameAirForce::onEnterGameModeFire()
 {
+/*
 	// clear m_firingEntries
 	list<shared_ptr<firingEntry>>::iterator itr;
 	
@@ -8902,6 +9162,27 @@ void GameAirForce::onEnterGameModeFire()
 		delete (*itr).get();
 	}
 	m_firingEntries.clear();
+ */
+
+	BOOL	success = FALSE;
+
+	success = ListView_DeleteAllItems(m_hwndLV_FiringTable);
+	if (!success) {
+		MessageBox(NULL, 
+  			L"Error: onEnterGameModeFire: failed to delete item.\n",
+			NULL,
+			MB_OK | MB_ICONSTOP
+		);
+	}
+}
+
+void GameAirForce::onEnterGameModePlot()
+{
+	cmdForm f;
+	f.command = AI_PLOT;
+	f.playerID = ALL_PLAYERS;
+
+	cmdToGame(AI_PLOT, f, NULL);
 }
 
 void GameAirForce::OnButtonProceed()
@@ -8926,6 +9207,7 @@ void GameAirForce::OnButtonProceed()
 			break;
 		case GM_DET_ADV:
 			m_gameMode = GM_PLOT_MOVE;
+			onEnterGameModePlot();
 			break;
 		case GM_PLOT_MOVE:
 			onExitGameModePlot();
@@ -8942,7 +9224,8 @@ void GameAirForce::OnButtonProceed()
 			m_gameMode = GM_RECORD;
 			break;
 		case GM_RECORD:
-			m_gameMode = GM_FIRE;
+			m_gameMode = GM_NOP;
+//			onEnterGameModeFire();
 			m_gameTurn ++;
 			break;
 	}
@@ -9174,6 +9457,41 @@ BOOL GameAirForce::setModifierToFireTable(HWND hwndListView, firingEntry *p_firi
 	return success;
 }
 
+BOOL GameAirForce::setDieRollToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
+{
+	LVITEM		lvi;
+	BOOL		success = false;
+	static wchar_t	str[8];
+
+	int		dieRoll = 0;
+
+	dieRoll = p_firingEnt->dieRoll;
+	
+	wsprintf(str, L"%d", dieRoll);
+
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = str;
+	lvi.iItem = index;
+	lvi.iSubItem = 6;
+	success = ListView_SetItem(hwndListView, &lvi);
+
+	return success;
+}
+
+BOOL GameAirForce::setResultToFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
+{
+	LVITEM		lvi;
+	BOOL		success = false;
+
+	lvi.mask =LVIF_TEXT;
+	lvi.pszText = p_firingEnt->result;
+	lvi.iItem = index;
+	lvi.iSubItem = 7;
+	success = ListView_SetItem(hwndListView, &lvi);
+
+	return success;
+}
+
 
 void GameAirForce::insertFiringEntFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index)
 {
@@ -9205,6 +9523,11 @@ void GameAirForce::insertFiringEntFiringTable(HWND hwndListView, firingEntry *p_
 		setDistanceToFireTable(hwndListView, p_firingEnt, index);
 		setAttenuationToFireTable(hwndListView, p_firingEnt, index);
 		setModifierToFireTable(hwndListView, p_firingEnt, index);
+		if ((p_firingEnt->dieRoll > 0)
+		&&  (p_firingEnt->dieRoll < 7)) {
+			setDieRollToFireTable(hwndListView, p_firingEnt, index);
+			setResultToFiringTable(hwndListView, p_firingEnt, index);
+		}
 	}
 }
 
@@ -9249,9 +9572,11 @@ void GameAirForce::insertItemsFiringTable(HWND hwndListView)
 	for (itrFiringEnt = m_firingEntries.begin(); 
   	     itrFiringEnt != m_firingEntries.end(); 
 	     itrFiringEnt++) {
-		fe = **itrFiringEnt;
-		insertFiringEntFiringTable(hwndListView, &fe, i);
-		i++;
+		if ((*itrFiringEnt)->gameTurn == m_gameTurn) {
+			fe = **itrFiringEnt;
+			insertFiringEntFiringTable(hwndListView, &fe, i);
+			i++;
+		}
 	}
 }
 
@@ -9571,7 +9896,7 @@ void GameAirForce::replicaGame(GameAirForce *p_src, GameAirForce *p_des)
 		p_des->aircraftID[i] = p_src->aircraftID[i];
 	}
 	p_des->m_gameTurn = p_src->m_gameTurn;
-	m_hwndLV_FiringTable = NULL;
+	//m_hwndLV_FiringTable = NULL;
 	// ---------- public member variables ----------
 	p_des->m_gameMode = p_src->m_gameMode;
 	mItrSelectedPlayer = mPlayers.end();	
@@ -10050,8 +10375,14 @@ bool GameAirForce::onFileOpen()
 		cleanupGame();
 		onFileOpenWholeGame(pszFilePath);
 		createWindowsOfWholeGame();
+		insertItemsFiringTable(m_hwndLV_FiringTable);
+//		ShowWindow(m_hwndButtonProceed, SW_SHOWDEFAULT);
+//		ShowWindow(m_hwndLV_FiringTable, SW_SHOWDEFAULT);
+//	InvalidateRect is an effective way to show a window.
+//
 	} else {
 	}
+        InvalidateRect(m_hwnd, NULL, TRUE);
 /*
 	fstream file;
 //	std::list<std::shared_ptr<MyEllipse>>::iterator itr;
@@ -10097,8 +10428,6 @@ bool GameAirForce::onFileOpen()
 
 LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	HWND h_buttonProceed;
-	HWND hwndListView;
 
 	switch (uMsg)
     	{
@@ -10121,7 +10450,7 @@ LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			return -1;
 		}
 
-		h_buttonProceed = CreateWindow(
+		m_hwndButtonProceed = CreateWindow(
 			L"BUTTON",
 			L"Proceed",
 			WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
@@ -10131,7 +10460,7 @@ LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			(HINSTANCE)GetWindowLong(m_hwnd, GWLP_HINSTANCE), 
 			NULL
 		);
-		hwndListView = createFiringTable();
+		createFiringTable();
 		break;
 
 	    case WM_DESTROY:

@@ -18,7 +18,7 @@
 #include "BaseWindow.h"
 //#include "AirForceData.h"
 
-#define MAX_AIRCRAFTMODELNUMBER 6
+#define MAX_AIRCRAFTMODELNUMBER 7	// Increment when you add new model
 #define MAX_INT  2147483647 
 #define MIN_INT  -2147483648  
 
@@ -184,6 +184,7 @@ enum CommandToX {
 	WRITE_FILE		= 23,
 	REPLICA_AC		= 24,
 	REPLICA_LOG		= 25,
+	AI_PLOT			= 26,
 // cmdToMap commands
 	FINALIZE_MANUV		= 1001,
 	REFLECT_ERASE_PLOT	= 1002,
@@ -478,6 +479,13 @@ struct chunkTab{
 	int		acID;
 };
 
+//---------------AI Player Part--------------
+struct plotNode {
+	int		manuv;
+	int		evaPt;
+	list<*plotNode>	p_plotNodes;
+};
+
 ///////////////////////////////////////////////////////////////////////////
 // 
 // 	MapAirForce.h
@@ -607,7 +615,7 @@ protected:
 	void 	drawFirings();
 	void 	OnPaint();
 	HRESULT CreateDWriteTextFormat();
-	void HandleDlgDeploySetAcstat(HWND hDlgWnd);
+	void 	HandleDlgDeploySetAcstat(HWND hDlgWnd);
 	LRESULT HandleDlgDeploy(HWND hDlgWnd,
 				UINT msg,
 				WPARAM wParam,
@@ -650,7 +658,7 @@ protected:
 			cmdForm *p_form, int distance);
 	int 	isHexReachableFwdPath(ResultHitTestHex *p_hex, 
 			cmdForm *p_form, int remainingMP);
-	void modifyManeuverableByParsedManuv(cmdForm *form);
+	void 	modifyManeuverableByParsedManuv(cmdForm *form);
 	void 	MapAirForce::OnMouseMove
 			(int pixelX, int pixelY, DWORD flags);
 	LRESULT HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -780,11 +788,12 @@ public:
 class Aircraft {
 protected:
   //------------------- protected member variables ---------------------
-	int	m_pilotVision;
-	int 	m_pilotReflex;
-	int	m_pilotTraining;
-	int	m_pilotExperience;
-	int 	m_maxDiveSpeed;
+	int			m_pilotVision;
+	int 			m_pilotReflex;
+	int			m_pilotTraining;
+	int			m_pilotExperience;
+	int 			m_maxDiveSpeed;
+	list<*plotNode>>	mp_plotNodes;
   //------------------- protected member functions ---------------------
 	HRESULT makeStrDamageCockpit(wchar_t *a_str);
 	HRESULT makeStrDamageEngine(wchar_t *a_str);
@@ -821,6 +830,9 @@ protected:
 	void ModifyGunPowerByBank(gunPower *p_gunPower);
 	void ModifyGunPowerByAmmo(gunPower *p_gunPower);
 	void ModifyGunPowerByDamage(gunPower *p_gunPower);
+	void getManuvable(cmdForm form, cmdForm *p_rtn);
+	void aiClearPlotTree();
+	void aiCreatePlotTree();
 
 
 public:
@@ -1009,6 +1021,7 @@ public:
 
 	firingArcRange ReferFiringRange();
 	gunPower ReferGunPower();
+	void copyAcToForm(cmdForm *p_form);
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1026,6 +1039,7 @@ protected:
 	D2D1_POINT_2F		m_ptMouse;
 	float			m_drawOriginX;
 	float			m_drawOriginY;
+	bool			m_ai;
 
   //------------------- protected member functions ---------------------
   	void cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn);
@@ -1053,6 +1067,21 @@ protected:
 		list<std::shared_ptr<Aircraft>>::iterator itr);
 	void cmdToPlayerGetFireRanges(cmdForm form, cmdForm *p_rtn);
 	void cmdToPlayerDispatch(int cmd, cmdForm form, cmdForm *p_rtn);
+	bool cmdToPlayerGET_DISPATCHED(
+		cmdForm form, 
+		cmdForm *p_rtn, 
+		list<shared_ptr<Aircraft>>::iterator itr);
+	void cmdToPlayerGET_DISPATCHEDs(cmdForm form, cmdForm *p_rtn);
+	bool cmdToPlayerGET_AC(
+		cmdForm form, 
+		cmdForm *p_rtn, 
+		list<shared_ptr<Aircraft>>::iterator itr);
+	void cmdToPlayerGET_ACs(cmdForm form, cmdForm *p_rtn);
+	bool cmdToPlayerGET_HIT(
+		cmdForm form, 
+		cmdForm *p_rtn, 
+		list<shared_ptr<Aircraft>>::iterator itr);
+	void cmdToPlayerGET_HITs(cmdForm form, cmdForm *p_rtn);
 	void cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn);
 	BOOL cmdToPlayerGetACID(
 		cmdForm form, 
@@ -1081,6 +1110,9 @@ protected:
 	void cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn);
 	bool cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn);
 	bool cmdToPlayerREPLICA_LOG(cmdForm form, cmdForm *p_rtn);
+	void aiCreatePlotTrees(cmdForm form, cmdForm *p_rtn);
+	void aiPlot(cmdForm form, cmdForm *p_rtn);
+	bool cmdToPlayerAI_PLOT(cmdForm form, cmdForm *p_rtn);
 
 public:
   //------------------- public member variables ---------------------
@@ -1092,6 +1124,7 @@ public:
 
   //------------------- public member functions ---------------------
 	void cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn);
+	// constructor
 	PlayerAirForce::PlayerAirForce() {
 		mPtrDWriteFactory = NULL;
 		mPtrTextFormat = NULL;
@@ -1100,6 +1133,7 @@ public:
 		m_drawOriginY = 30.0f;
 		mp_ownerGame = NULL;
 		m_ItrSelectedAircraft = mAircrafts.end();
+		m_ai = false;
 	};
 
 	PlayerAirForce::PlayerAirForce(const PlayerAirForce &src)
@@ -1118,6 +1152,7 @@ public:
 		m_ItrSelectedAircraft = mAircrafts.end(); 
 		mAircrafts.clear();
 		mp_ownerGame = NULL;
+		m_ai = src.m_ai;
 	};
 
 	PlayerAirForce::~PlayerAirForce() {
@@ -1154,6 +1189,7 @@ protected:
 	regStat		mNewPlayerRegStat;
 	static int aircraftID[MAX_AIRCRAFTMODELNUMBER];
 	int			m_gameTurn;
+	HWND m_hwndButtonProceed;
 	HWND m_hwndLV_FiringTable;
 
   //------------------- protected member functions ---------------------
@@ -1162,6 +1198,10 @@ protected:
 						UINT msg,
 					  	WPARAM wParam,
 				  	  	LPARAM lParam);
+	void handleDlgNewPlayerInit(HWND hDlgWnd,
+		UINT msg,
+		WPARAM wParam,
+		LPARAM lParam);
 	LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 						UINT msg,
 					  	WPARAM wParam,
@@ -1213,6 +1253,7 @@ protected:
 	void repaintMaps();
 	void onEnterGameModeMove();
 	void onEnterGameModeFire();
+	void onEnterGameModePlot();
 	void OnButtonProceed();
 	//----------------------
 	void cmdToGameGetAC_acID(cmdForm *p_cmdForm, int acID);
@@ -1224,6 +1265,8 @@ protected:
 	BOOL setDistanceToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
 	BOOL setAttenuationToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
 	BOOL setModifierToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
+	BOOL setDieRollToFireTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
+	BOOL setResultToFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
 	void insertFiringEntFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
 	void setFiringEntFiringTable(HWND hwndListView, firingEntry *p_firingEnt, int index);
 	void insertItemsFiringTable(HWND hwndListView);
