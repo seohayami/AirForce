@@ -1746,7 +1746,10 @@ void Aircraft::aiCreatePlotTreeRoot()
 	modifyManeuverableByParsedManuv(&rtn);
 // under construction: need to create plot tree
 //      also need to call parseManuv() and modifyManuvableByParsedManuv()
+//
 
+	if (rtn.turnLeft == 0) {
+	}
 }
 
 void Aircraft::aiCreatePlotTree()
