@@ -353,6 +353,7 @@ struct cmdForm {
 	int		nose;
 	bool		loaded;
 	int 		manuv[80];
+	int 		prevManuv[80];	//manuv[] of the prev. GameTurn
 	int		maxSpeedAtAnyAlt;
 	float		maxAlt;
 	int		stackNum;
@@ -861,6 +862,7 @@ public:
 	int	m_nose;
 	bool	m_loaded;
 	int	m_manuv[80];
+	int	m_prevManuv[80];
 	damage 	m_damage;
 	ammo	m_ammo;
 	list<shared_ptr<Aircraft>>	m_logs;
@@ -874,6 +876,9 @@ public:
 		m_manuv[0] = MANUV_DP;
 		m_manuv[1] = MANUV_DP;
 		m_manuv[2] = MANUV_EN;
+		m_prevManuv[0] = MANUV_DP;
+		m_prevManuv[1] = MANUV_DP;
+		m_prevManuv[2] = MANUV_EN;
 		m_loaded = FALSE;
 		mAircraftRegStat = UNDEF;
 		m_stat = UNDEFINED;
@@ -960,9 +965,12 @@ public:
 		m_bank = src.m_bank;
 		m_nose = src.m_nose;
 		m_loaded = src.m_loaded;
-		m_manuv[80];
+//		m_manuv[80];
 		for (i = 0; i < 80; i++) {
 			m_manuv[i] = src.m_manuv[i];
+		}
+		for (i = 0; i < 80; i++) {
+			m_prevManuv[i] = src.m_prevManuv[i];
 		}
 		m_damage = src.m_damage;
 		m_ammo = src.m_ammo;

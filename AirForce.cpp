@@ -970,7 +970,7 @@ void Aircraft::modifyManeuverableByPrevManuv(maneuverable *rtn)
 	if ((0 < lastManuv) && (lastManuv < 20)) {
 		int straight = 0;
 		int tmp;
-		if ((0 < secondLastManuv) && (secondLastManuv)) {
+		if ((0 < secondLastManuv) && (secondLastManuv < 20)) {
 			straight = lastManuv + secondLastManuv;
 		} else {
 			straight = lastManuv;
@@ -1729,6 +1729,21 @@ void Aircraft::aiClearPlotTree()
 	}
 }
 
+void Aircraft::aiCreatePlotBranches(plotNode *p_node, cmdForm form)
+{
+	int	mp;
+
+	if (form.turnLeft == 0) {
+		parseManuvTL(&form, &mp);
+
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_TL;
+		(p_node->p_plotNodes).push_front(p_new);
+
+		aiCreatePlotBranches(p_new, form);
+	}
+}
+
 void Aircraft::aiCreatePlotTreeRoot()
 {
 	plotNode	*p_new(new plotNode);
@@ -1748,6 +1763,7 @@ void Aircraft::aiCreatePlotTreeRoot()
 //      also need to call parseManuv() and modifyManuvableByParsedManuv()
 //
 
+	aiCreatePlotBranches(p_new, rtn);
 	if (rtn.turnLeft == 0) {
 	}
 }
@@ -3499,6 +3515,16 @@ void MapAirForce::parseManuvModifyVirCorSlipRoll(cmdForm *p_form, int manuv)
 	}
 }
 
+void appendManuvToFormManuv(cmdForm *p_form, int manu)
+{
+	int	i;
+
+	for (i = 0; p_form->manuv[i] != MANUV_EN; i++) {
+	}
+	p_form->manuv[i] = manu;
+	p_form->manuv[i + 1] = MANUV_EN;
+}
+
 void MapAirForce::parseManuvTL(cmdForm *p_form, int *p_mp)
 {
 	p_form->speed--;
@@ -3511,6 +3537,7 @@ void MapAirForce::parseManuvTL(cmdForm *p_form, int *p_mp)
 	// modulo may return negative value
 	// so dont use (int_heading - 60) % 360
 	p_form->heading = (float)int_heading;
+	appendManuvToFormManuv(p_form, MANUV_TL);
 }
 
 void MapAirForce::parseManuvTR(cmdForm *p_form, int *p_mp)
@@ -3522,16 +3549,19 @@ void MapAirForce::parseManuvTR(cmdForm *p_form, int *p_mp)
 	int int_heading = (int)(p_form->heading);
 	int_heading = (int_heading + 60) % 360;
 	p_form->heading = (float)int_heading;
+	appendManuvToFormManuv(p_form, MANUV_TR);
 }
 
 void MapAirForce::parseManuvBL(cmdForm *p_form, int *p_mp)
 {
 	p_form->bank = (p_form->bank + 1) % 6;
+	appendManuvToFormManuv(p_form, MANUV_BL);
 }
 
 void MapAirForce::parseManuvBR(cmdForm *p_form, int *p_mp)
 {
 	p_form->bank = (p_form->bank + 5) % 6;
+	appendManuvToFormManuv(p_form, MANUV_BR);
 }
 
 void MapAirForce::parseManuvSL(cmdForm *p_form, int *p_mp)
@@ -3541,6 +3571,7 @@ void MapAirForce::parseManuvSL(cmdForm *p_form, int *p_mp)
 	(p_form->manuvable.remainingMP) --;
 
 	parseManuvModifyVirCorSlipRoll(p_form, MANUV_SL);
+	appendManuvToFormManuv(p_form, MANUV_SL);
 }
 
 void MapAirForce::parseManuvSR(cmdForm *p_form, int *mp)
@@ -3550,6 +3581,7 @@ void MapAirForce::parseManuvSR(cmdForm *p_form, int *mp)
 	(p_form->manuvable.remainingMP) --;
 
 	parseManuvModifyVirCorSlipRoll(p_form, MANUV_SR);
+	appendManuvToFormManuv(p_form, MANUV_SR);
 }
 
 void MapAirForce::parseManuvRL(cmdForm *p_form, int *p_mp)
@@ -3560,6 +3592,7 @@ void MapAirForce::parseManuvRL(cmdForm *p_form, int *p_mp)
 	p_form->bank = (p_form->bank + 3) % 6;
 
 	parseManuvModifyVirCorSlipRoll(p_form, MANUV_RL);
+	appendManuvToFormManuv(p_form, MANUV_RL);
 }
 
 void MapAirForce::parseManuvRR(cmdForm *p_form, int *p_mp)
@@ -3576,6 +3609,7 @@ void MapAirForce::parseManuvRR(cmdForm *p_form, int *p_mp)
 	//   '2017/09/25
 
 	parseManuvModifyVirCorSlipRoll(p_form, MANUV_RR);
+	appendManuvToFormManuv(p_form, MANUV_RR);
 }
 
 void MapAirForce::parseManuvLC(cmdForm *p_form, int *p_mp)
@@ -3588,6 +3622,7 @@ void MapAirForce::parseManuvLC(cmdForm *p_form, int *p_mp)
 	int int_heading = (int)(p_form->heading);
 	int_heading = (int_heading + 180) % 360;
 	p_form->heading = (float)int_heading;
+	appendManuvToFormManuv(p_form, MANUV_LC);
 }
 
 void MapAirForce::parseManuvLD(cmdForm *p_form, int *p_mp)
@@ -3600,18 +3635,21 @@ void MapAirForce::parseManuvLD(cmdForm *p_form, int *p_mp)
 	int int_heading = (int)(p_form->heading);
 	int_heading = (int_heading + 180) % 360;
 	p_form->heading = (float)int_heading;
+	appendManuvToFormManuv(p_form, MANUV_LD);
 }
 
 void MapAirForce::parseManuvPW(cmdForm *p_form, int *p_mp)
 {
 	(p_form->speed)++;
 	((p_form->manuvable).maxPower)--;
+	appendManuvToFormManuv(p_form, MANUV_PW);
 }
 
 void MapAirForce::parseManuvBK(cmdForm *p_form, int *p_mp)
 {
 	(p_form->speed)--;
 	((p_form->manuvable).maxBreak)--;
+	appendManuvToFormManuv(p_form, MANUV_BK);
 }
 
 void MapAirForce::parseManuvDB(cmdForm *p_form, int *p_mp)
@@ -3734,6 +3772,7 @@ void MapAirForce::parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd)
 	for (i = 0; i < fwd; i++) {
 		parseManuvMoveFwdOneHex(p_form, p_mp);
 	}
+	appendManuvToFormManuv(p_form, fwd);
 
 }
 
@@ -3741,12 +3780,14 @@ void MapAirForce::parseManuvClimb(cmdForm *p_form, int *p_mp, int climb)
 {
 // climb; feet
 	p_form->alt += (float)(climb) / 1000.0f;
+	appendManuvToFormManuv(p_form, climb);
 }
 
 void MapAirForce::parseManuvDive(cmdForm *p_form, int *p_mp, int dive)
 {
 // dive; negative integer in feet
 	p_form->alt += (float)(dive) / 1000.0f;
+	appendManuvToFormManuv(p_form, dive);
 }
 
 void MapAirForce::parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading)
