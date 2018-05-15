@@ -550,6 +550,7 @@ protected:
 	void parseManuvModifyVirCorSlipRollSouthWest(cmdForm *p_form, int manuv);
 	void parseManuvModifyVirCorSlipRollNorthWest(cmdForm *p_form, int manuv);
 	void parseManuvModifyVirCorSlipRoll(cmdForm *p_form, int manuv);
+//	void appendManuvToFormManuv(cmdForm *p_form, int manu);
 	void parseManuvTL(cmdForm *p_form, int *p_mp);
 	void parseManuvTR(cmdForm *p_form, int *p_mp);
 	void parseManuvBL(cmdForm *p_form, int *p_mp);
