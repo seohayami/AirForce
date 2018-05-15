@@ -1729,9 +1729,12 @@ void Aircraft::aiClearPlotTree()
 	}
 }
 
-void Aircraft::aiCreatePlotBranches(plotNode *p_node, cmdForm form)
+void Aircraft::aiCreatePlotBranches(plotNode *p_node, cmdForm form, int mp)
 {
-	int	mp;
+
+	if (mp <= 0) {
+		return;
+	}
 
 	if (form.turnLeft == 0) {
 		parseManuvTL(&form, &mp);
@@ -1740,7 +1743,7 @@ void Aircraft::aiCreatePlotBranches(plotNode *p_node, cmdForm form)
 		p_new->manuv = MANUV_TL;
 		(p_node->p_plotNodes).push_front(p_new);
 
-		aiCreatePlotBranches(p_new, form);
+		aiCreatePlotBranches(p_new, form, mp);
 	}
 }
 
@@ -1763,7 +1766,7 @@ void Aircraft::aiCreatePlotTreeRoot()
 //      also need to call parseManuv() and modifyManuvableByParsedManuv()
 //
 
-	aiCreatePlotBranches(p_new, rtn);
+	aiCreatePlotBranches(p_new, rtn, remainingMP);
 	if (rtn.turnLeft == 0) {
 	}
 }
