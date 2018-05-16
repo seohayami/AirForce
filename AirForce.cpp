@@ -765,7 +765,7 @@ int Aircraft::GetAltTblIndex()
 
 spdIncTblEntry Aircraft::ReferSpeedIncTbl()
 {
-	int altTblIndex = GetAltTblIndex();
+	int altTblIndex = this.GetAltTblIndex();
 
 	if (altTblIndex < 0) {
 		MessageBox(NULL, 
@@ -784,7 +784,7 @@ spdIncTblEntry Aircraft::ReferSpeedIncTbl()
 
 float Aircraft::GetMaxAltChgClimb(int spdIncIndex)
 {
-	int altTblIndex = GetAltTblIndex();
+	int altTblIndex = this.GetAltTblIndex();
 	int i;
 	float maxClimb = 0.0f;
 
@@ -799,7 +799,7 @@ float Aircraft::GetMaxAltChgClimb(int spdIncIndex)
 
 float Aircraft::GetMaxAltChgDive(int spdIncIndex)
 {
-	int altTblIndex = GetAltTblIndex();
+	int altTblIndex = this.GetAltTblIndex();
 	int i;
 	float maxDive = 0.0f;
 
@@ -814,21 +814,21 @@ float Aircraft::GetMaxAltChgDive(int spdIncIndex)
 
 int Aircraft::GetMaxPower()
 {
-	int altTblIndex = GetAltTblIndex();
+	int altTblIndex = this.GetAltTblIndex();
 
 	return aircraftModels[mAircraftModel].speedChgTbl[0][altTblIndex];
 }
 
 int Aircraft::GetMaxBreak()
 {
-	int altTblIndex = GetAltTblIndex();
+	int altTblIndex = this.GetAltTblIndex();
 
 	return aircraftModels[mAircraftModel].speedChgTbl[1][altTblIndex];
 }
 
 int Aircraft::GetMaxDiveSpeed()
 {
-	int altTblIndex = GetAltTblIndex();
+	int altTblIndex = this.GetAltTblIndex();
 
 	int i;
 
@@ -1065,7 +1065,7 @@ int Aircraft::getMP()
 
 maneuverable Aircraft::ReferManuvReqTblSpdInc(int spdIncIndex)
 {
-	int altTblIndex = GetAltTblIndex();
+	int altTblIndex = this.GetAltTblIndex();
 	maneuverable	rtn;
 	int loaded;
 
@@ -1148,8 +1148,8 @@ maneuverable Aircraft::ReferManuvReqTblSpdInc(int spdIncIndex)
 
 maneuverable Aircraft::ReferManuvReqTbl()
 {
-	spdIncTblEntry spdInc = ReferSpeedIncTbl();
-	int altTblIndex = GetAltTblIndex();
+	spdIncTblEntry spdInc = this.ReferSpeedIncTbl();
+	int altTblIndex = this.GetAltTblIndex();
 	int i;
 	maneuverable	rtn;
 
@@ -1354,9 +1354,9 @@ int Aircraft::getDamageCockpit()
 
 void Aircraft::modifyManeuverableByDamage(maneuverable  *p_manuvable)
 {
-	modifyManeuverableByDamageWing(p_manuvable);
+	this.modifyManeuverableByDamageWing(p_manuvable);
 
-	int j = getDamageCockpit();
+	int j = this.getDamageCockpit();
 	if (j >= 1) {
 		p_manuvable -> loopClimb = -1;
 		p_manuvable -> loopDive = -1;
@@ -1687,7 +1687,7 @@ void Aircraft::getManuvable(
 	maneuverable manuv;
 
 	manuv = ReferManuvReqTbl();
-	modifyManeuverableByDamage(&manuv);
+	this.modifyManeuverableByDamage(&manuv);
 	modifyManeuverableByPilot(&manuv);
 	
 	p_rtn->command = form.command;
@@ -1704,6 +1704,44 @@ void Aircraft::getManuvable(
 	int i;
 	for (i = 0; i < 80; i++) {
 		p_rtn->manuv[i] = m_manuv[i];
+	}
+
+	return;
+}
+
+void Aircraft::getManuvableOnly(
+	cmdForm form, 
+	cmdForm *p_rtn)  
+{
+// Function:
+// 	get maneuverable, refering ManuvReqTbl 
+// 	and modify it depending on the AC's damage and pilot.
+//	other items such as virCor/speed/heading is not changed
+//	from "form".
+//	The purpose of this function is 
+//	"form" keeps aircraft information (need not access AC's member variable),
+//	and can do recursive call using "form".
+//
+	maneuverable manuvable;
+
+	manuvable = this.ReferManuvReqTbl();
+	this.modifyManeuverableByDamage(&manuvable);
+	modifyManeuverableByPilot(&manuvable);
+	
+	p_rtn->command = form.command;
+	p_rtn->manuvable = manuvable;
+	p_rtn->aircraftID = form.aircraftID;
+	p_rtn->acStatus = form.acStatus;
+	p_rtn->virCorX = form.virCorX;
+	p_rtn->virCorY = form.virCorY;
+	p_rtn->heading = form.heading;
+	p_rtn->speed = form.speed;
+	p_rtn->alt = form.alt;
+	p_rtn->bank = form.bank;
+	p_rtn->nose = form.nose;
+	int i;
+	for (i = 0; i < 80; i++) {
+		p_rtn->manuv[i] = form.manuv[i];
 	}
 
 	return;
@@ -1737,6 +1775,7 @@ void Aircraft::aiCreatePlotBranches(plotNode *p_node, cmdForm form, int mp)
 	}
 
 	if (form.turnLeft == 0) {
+		this.getManuvableOnly(form, &form);
 		parseManuvTL(&form, &mp);
 
 		plotNode	*p_new(new plotNode);

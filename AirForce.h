@@ -485,6 +485,7 @@ struct plotNode {
 	int		manuv;
 	int		evaPt;
 	list<*plotNode>	p_plotNodes;
+	plotNode	*p_parent;
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -833,6 +834,7 @@ protected:
 	void ModifyGunPowerByAmmo(gunPower *p_gunPower);
 	void ModifyGunPowerByDamage(gunPower *p_gunPower);
 	void getManuvable(cmdForm form, cmdForm *p_rtn);
+	void getManuvableOnly(cmdForm form, cmdForm *p_rtn);
 	void aiClearPlotTree();
 	void aiCreatePlotTree();
 
