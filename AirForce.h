@@ -225,6 +225,7 @@ enum attackSide {
 #define NOSE_LV		1
 #define NOSE_DN		2
 
+#define	MANUV_NP 	 0	//Nop
 #define	MANUV_TL	-1	//Turn Left
 #define	MANUV_TR	-2  	//Turn Right
 #define	MANUV_BL	-3	//Bank Left
@@ -811,10 +812,12 @@ protected:
 	int GetMaxBreak();
 	int GetMaxDiveSpeed();
 	void modifyManeuverableByBank(maneuverable *rtn);
-	void getPrevTwoManuv(int *last, int *secondLast);
-	void modifyManeuverableByPrevManuv(maneuverable *rtn);
+	void getPrevTwoManuvNonFormMode_(int *last, int *secondLast);
+//*	void getPrevTwoManuvFormMode(int *last, int *secondLast, cmdForm f);
+	void getPrevTwoManuv_(int *last, int *secondLast, cmdForm form, bool formMode);
+	void modifyManeuverableByPrevManuv_(maneuverable *rtn, cmdForm f, bool formMode);
 	int getMP();
-	maneuverable ReferManuvReqTblSpdInc(int spdIncIndex);
+	maneuverable ReferManuvReqTblSpdInc_(int spdIncIndex, cmdForm f, bool formMode);
 	void modifyManeuverableByDamageWing(maneuverable *p_manuvable);
 	void modifyManeuverableByDamage2Engines
 		(maneuverable *p_manuvable, int *engineDamage);
@@ -833,10 +836,12 @@ protected:
 	void ModifyGunPowerByBank(gunPower *p_gunPower);
 	void ModifyGunPowerByAmmo(gunPower *p_gunPower);
 	void ModifyGunPowerByDamage(gunPower *p_gunPower);
-	void getManuvable(cmdForm form, cmdForm *p_rtn);
-	void getManuvableOnly(cmdForm form, cmdForm *p_rtn);
-	void aiClearPlotTree();
-	void aiCreatePlotTree();
+	void copyPrevManuvToForm_(cmdForm *p_rtn);
+	void getManuvable_(cmdForm form, cmdForm *p_rtn, bool formMode);
+	void clearPlotTree();
+	int createPlotBranches_(plotNode *p_node, cmdForm form, int mp);
+	void createPlotTreeRoot_();
+	void createPlotTree_();
 
 
 public:
@@ -1026,7 +1031,7 @@ public:
 
 	void Aircraft::GetLimit(int acm, cmdForm *p_rtn);
 	spdIncTblEntry ReferSpeedIncTbl();
-	maneuverable ReferManuvReqTbl();
+	maneuverable ReferManuvReqTbl_(cmdForm f, bool formMode);
 	void modifyManeuverableByDamage(maneuverable  *p_manuvable);
 	void modifyManeuverableByPilot(maneuverable *p_manuvable);
 
@@ -1121,7 +1126,7 @@ protected:
 	void cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn);
 	bool cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn);
 	bool cmdToPlayerREPLICA_LOG(cmdForm form, cmdForm *p_rtn);
-	void aiCreatePlotTrees(cmdForm form, cmdForm *p_rtn);
+	void createPlotTrees(cmdForm form, cmdForm *p_rtn);
 	void aiPlot(cmdForm form, cmdForm *p_rtn);
 	bool cmdToPlayerAI_PLOT(cmdForm form, cmdForm *p_rtn);
 

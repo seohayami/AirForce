@@ -872,30 +872,46 @@ void Aircraft::modifyManeuverableByBank(maneuverable *rtn)
 	}
 }
 
-void Aircraft::getPrevTwoManuv(int *last, int *secondLast)
+void Aircraft::getPrevTwoManuvNonFormMode_(int *last, int *secondLast)
 {
-	int i = 0;
-
-	*last = MANUV_EN;
-	*secondLast = MANUV_EN;
-
 	for (i = 0; m_manuv[i] != MANUV_EN; i++) {
-		if (((m_manuv[i] < 0) && (m_manuv[i] > MANUV_PW)) 
-		||  ((m_manuv[i] >= 0) && (m_manuv[i] < 20))){
+		if ((m_manuv[i] < 0) && (m_manuv[i] > MANUV_PW)) {
+			// turn/bank/slip/roll/loop/deploy
 	        	*secondLast = *last;	
 			*last = m_manuv[i];
 		}
+		if ((m_manuv[i] >= 0) && (m_manuv[i] < 20)){
+			// straight move
+			if ((*last >= 0) && (*last < 20)) {
+				// last is straight move
+				*last += m_manuv[i];
+			} else {
+		        	*secondLast = *last;	
+				*last = m_manuv[i];
+			}
+		}
 	}
-
 	if (*secondLast == MANUV_EN) { // need to go back to log data of previous GameTurns
 		list<shared_ptr<Aircraft>>::iterator itr;
-
 		for (itr = m_logs.begin(); itr != m_logs.end(); itr++) {
 			for (i = 0; (*itr)->m_manuv[i] != MANUV_EN; i++) {
-				if ((((*itr)->m_manuv[i] < 0) && ((*itr)->m_manuv[i] > MANUV_PW)) 
-				||  (((*itr)->m_manuv[i] >= 0) && ((*itr)->m_manuv[i] < 20))){
+				// search for MANUV_EN
+			}
+			for ( ;i < 0 ; i--) {
+				if (((*itr)->m_manuv[i] < 0) && ((*itr)->m_manuv[i] > MANUV_PW)){ 
+					// turn/bank/slip/roll/loop/deploy
 	        			*secondLast = *last;	
-					*last = (*itr)->m_manuv[i];
+					*last = m_manuv[i];
+				}
+				if (((*itr)->m_manuv[i] >= 0) && ((*itr)->m_manuv[i] < 20)){
+					// straight move
+					if ((*last >= 0) && (*last < 20)) {
+						// last is straight move
+						*last += m_manuv[i];
+					} else {
+				        	*secondLast = *last;	
+						*last = m_manuv[i];
+					}
 				}
 				if (*secondLast != MANUV_EN) {
 					return;
@@ -905,12 +921,73 @@ void Aircraft::getPrevTwoManuv(int *last, int *secondLast)
 	}
 }
 
-void Aircraft::modifyManeuverableByPrevManuv(maneuverable *rtn) 
+void getPrevTwoManuvFormMode(int *last, int *secondLast, cmdForm f)
+{
+	for (i = 0; f.manuv[i] != MANUV_EN; i++) {
+		if ((f.manuv[i] < 0) && (f.manuv[i] > MANUV_PW)) {
+			// turn/bank/slip/roll/loop/deploy
+	        	*secondLast = *last;	
+			*last = m_manuv[i];
+		}
+		if ((f.manuv[i] >= 0) && (f.manuv[i] < 20)){
+			// straight move
+			if ((*last >= 0) && (*last < 20)) {
+				// last is straight move
+				*last += m_manuv[i];
+			} else {
+		        	*secondLast = *last;	
+				*last = f.manuv[i];
+			}
+		}
+	}
+	if (*secondLast == MANUV_EN) { // need to go back to log data of previous GameTurns
+			for (i = 0; f.prevManuv[i] != MANUV_EN; i++) {
+				// search for MANUV_EN
+			}
+			for ( ;i < 0 ; i--) {
+				if ((f.prevManuv[i] < 0) && (f.prevManuv[i] > MANUV_PW)){ 
+					// turn/bank/slip/roll/loop/deploy
+	        			*secondLast = *last;	
+					*last = f.prevManuv[i];
+				}
+				if ((f.prevManuv[i] >= 0) && (f.prevManuv[i] < 20)){
+					// straight move
+					if ((*last >= 0) && (*last < 20)) {
+						// last is straight move
+						*last += f.prevManuv[i];
+					} else {
+				        	*secondLast = *last;	
+						*last = f.prevManuv[i];
+					}
+				}
+				if (*secondLast != MANUV_EN) {
+					return;
+				}
+			}
+		}
+	}
+}
+
+void Aircraft::getPrevTwoManuv_(int *last, int *secondLast, cmdForm form, bool formMode)
+{
+	int i = 0;
+
+	*last = MANUV_EN;
+	*secondLast = MANUV_EN;
+
+	if (!formMode) {
+		this.getPrevTwoManuvNonFormMode_(last, secondLast);
+	} else {
+		getPrevTwoManuvFormMode(last, secondLast, form);
+	}
+}
+
+void Aircraft::modifyManeuverableByPrevManuv_(maneuverable *rtn, cmdForm f, bool formMode) 
 {
 	int lastManuv;
 	int secondLastManuv;
 
-	getPrevTwoManuv(&lastManuv, &secondLastManuv);
+	getPrevTwoManuv_(&lastManuv, &secondLastManuv, f, formMode);
 
 	if (lastManuv == MANUV_SL) {
 		if (rtn->turnRight >= 0) {
@@ -1063,7 +1140,7 @@ int Aircraft::getMP()
 	return mp;
 }
 
-maneuverable Aircraft::ReferManuvReqTblSpdInc(int spdIncIndex)
+maneuverable Aircraft::ReferManuvReqTblSpdInc_(int spdIncIndex, cmdForm f, bool formMode)
 {
 	int altTblIndex = this.GetAltTblIndex();
 	maneuverable	rtn;
@@ -1141,12 +1218,12 @@ maneuverable Aircraft::ReferManuvReqTblSpdInc(int spdIncIndex)
 
 //	modifyManeuverableByBank(&rtn);
 //	 
-	modifyManeuverableByPrevManuv(&rtn);
+	this.modifyManeuverableByPrevManuv_(&rtn, f, formMode);
 
 	return rtn;
 }
 
-maneuverable Aircraft::ReferManuvReqTbl()
+maneuverable Aircraft::ReferManuvReqTbl_(cmdForm f, bool formMode)
 {
 	spdIncTblEntry spdInc = this.ReferSpeedIncTbl();
 	int altTblIndex = this.GetAltTblIndex();
@@ -1182,7 +1259,7 @@ maneuverable Aircraft::ReferManuvReqTbl()
 			break;
 	}
 
-	return ReferManuvReqTblSpdInc(i);
+	return ReferManuvReqTblSpdInc_(i, f, formMode);
 }	
 
 void Aircraft::modifyManeuverableByDamageWing(maneuverable *p_manuvable) 
@@ -1680,73 +1757,81 @@ void Aircraft::copyAcToForm(cmdForm *p_form)
 	p_form->p_aircraft = (int*)this;
 }
 
-void Aircraft::getManuvable(
-	cmdForm form, 
-	cmdForm *p_rtn)  
+void Aircraft::copyPrevManuvToForm_(cmdForm *p_rtn)
 {
-	maneuverable manuv;
+	list<shared_ptr<Aircraft>>::iterator itr;
+	int 	i;
 
-	manuv = ReferManuvReqTbl();
+	p_rtn->prevManuv[0] = MANUV_DP;
+	p_rtn->prevManuv[1] = MANUV_DP;
+	p_rtn->prevManuv[2] = MANUV_EN;
+
+	for (itr = m_logs.begin(); itr != m_logs.end(); itr++) {
+		for (i = 0; i < 80; i++) {
+			p_rtn->prevManuv[i] = (*itr)->m_manuv[i];
+		}
+		return;
+	}
+}
+
+
+void Aircraft::getManuvable_(
+	cmdForm form, 
+	cmdForm *p_rtn,
+	bool	formMode)  
+{
+// Function:
+// 	if formMode then
+// 		get maneuverable, refering ManuvReqTbl 
+// 		and modify it depending on the AC's damage and pilot.
+//		other items such as virCor/speed/heading is not changed
+//		from "form".
+//		The purpose of this function is 
+//		"form" keeps aircraft information (need not access AC's member variable),
+//		and can do recursive call using "form".
+//
+	maneuverable manuv;
+	int i;
+
+	manuv = this.ReferManuvReqTbl_(form, formMode);
 	this.modifyManeuverableByDamage(&manuv);
 	modifyManeuverableByPilot(&manuv);
 	
-	p_rtn->command = form.command;
-	p_rtn->manuvable = manuv;
-	p_rtn->aircraftID = m_id;
-	p_rtn->acStatus = m_stat;
-	p_rtn->virCorX = m_virCorX;
-	p_rtn->virCorY = m_virCorY;
-	p_rtn->heading = m_heading;
-	p_rtn->speed = m_speed;
-	p_rtn->alt = m_alt;
-	p_rtn->bank = m_bank;
-	p_rtn->nose = m_nose;
-	int i;
-	for (i = 0; i < 80; i++) {
-		p_rtn->manuv[i] = m_manuv[i];
+	if (!formMode) {
+		p_rtn->command = form.command;
+		p_rtn->manuvable = manuv;
+		p_rtn->aircraftID = m_id;
+		p_rtn->acStatus = m_stat;
+		p_rtn->virCorX = m_virCorX;
+		p_rtn->virCorY = m_virCorY;
+		p_rtn->heading = m_heading;
+		p_rtn->speed = m_speed;
+		p_rtn->alt = m_alt;
+		p_rtn->bank = m_bank;
+		p_rtn->nose = m_nose;
+		for (i = 0; i < 80; i++) {
+			p_rtn->manuv[i] = m_manuv[i];
+		}
+		this.copyPrevManuvToForm_(p_rtn);
+	} else {
+		p_rtn->command = form.command;
+		p_rtn->manuvable = manuv;
+		p_rtn->aircraftID = form.aircraftID;
+		p_rtn->acStatus = form.acStatus;
+		p_rtn->virCorX = form.virCorX;
+		p_rtn->virCorY = form.virCorY;
+		p_rtn->heading = form.heading;
+		p_rtn->speed = form.speed;
+		p_rtn->alt = form.alt;
+		p_rtn->bank = form.bank;
+		p_rtn->nose = form.nose;
+		for (i = 0; i < 80; i++) {
+			p_rtn->manuv[i] = form.manuv[i];
+		}
 	}
 
 	return;
 }
-
-void Aircraft::getManuvableOnly(
-	cmdForm form, 
-	cmdForm *p_rtn)  
-{
-// Function:
-// 	get maneuverable, refering ManuvReqTbl 
-// 	and modify it depending on the AC's damage and pilot.
-//	other items such as virCor/speed/heading is not changed
-//	from "form".
-//	The purpose of this function is 
-//	"form" keeps aircraft information (need not access AC's member variable),
-//	and can do recursive call using "form".
-//
-	maneuverable manuvable;
-
-	manuvable = this.ReferManuvReqTbl();
-	this.modifyManeuverableByDamage(&manuvable);
-	modifyManeuverableByPilot(&manuvable);
-	
-	p_rtn->command = form.command;
-	p_rtn->manuvable = manuvable;
-	p_rtn->aircraftID = form.aircraftID;
-	p_rtn->acStatus = form.acStatus;
-	p_rtn->virCorX = form.virCorX;
-	p_rtn->virCorY = form.virCorY;
-	p_rtn->heading = form.heading;
-	p_rtn->speed = form.speed;
-	p_rtn->alt = form.alt;
-	p_rtn->bank = form.bank;
-	p_rtn->nose = form.nose;
-	int i;
-	for (i = 0; i < 80; i++) {
-		p_rtn->manuv[i] = form.manuv[i];
-	}
-
-	return;
-}
-
 
 void deletePlotNode(plotNode *p_plotNode)
 {
@@ -1759,7 +1844,7 @@ void deletePlotNode(plotNode *p_plotNode)
 	delete p_plotNode;
 }
 
-void Aircraft::aiClearPlotTree()
+void Aircraft::clearPlotTree()
 {
 	list<*plotNode>::iterator itr;
 	for (itr = mp_plotNodes.begin(); itr != mp_plotNodes.end(); itr++) {
@@ -1767,28 +1852,169 @@ void Aircraft::aiClearPlotTree()
 	}
 }
 
-void Aircraft::aiCreatePlotBranches(plotNode *p_node, cmdForm form, int mp)
+int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 {
+	static int	plotSize = 0;
 
 	if (mp <= 0) {
 		return;
 	}
 
-	if (form.turnLeft == 0) {
-		this.getManuvableOnly(form, &form);
-		parseManuvTL(&form, &mp);
+	plotSize ++;
 
+	if (form.manuvable.turnLeft == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvTL(&form, &mp);
+		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_TL;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
-		aiCreatePlotBranches(p_new, form, mp);
+		createPlotBranches_(p_new, form, mp);
 	}
+	if (form.manuvable.turnRight == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvTR(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_TR;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.bankLeft == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvBL(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_BL;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.bankRight == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvBR(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_BR;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.slipLeft == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvSL(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_SL;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.slipRight == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvSR(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_SR;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.rollLeft == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvRL(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_RL;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.rollRight == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvRR(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_RR;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.loopClimb == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvLC(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_LC;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.loopDive == 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvLD(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_LD;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.maxPower > 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvPW(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_PW;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (form.manuvable.maxBreak > 0) {
+		this.getManuvable_(form, &form, true);
+		parseManuvBK(&form, &mp);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = MANUV_BK;
+		p_new->evaPt = 0;
+		p_new->p_parent = p_node:
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	return plotSize;
 }
 
-void Aircraft::aiCreatePlotTreeRoot()
+void Aircraft::createPlotTreeRoot_()
 {
 	plotNode	*p_new(new plotNode);
+	p_new->manuv = MANUV_NP;
+	p_new->evapt = 0;
+	p_new->p_parent = NULL;
 
 	mp_plotNodes.push_front(p_new);
 
@@ -1798,22 +2024,23 @@ void Aircraft::aiCreatePlotTreeRoot()
 	f.command = GET_MANUVABLE;
 	f.playerID = SELECTED_PLAYER;
 	f.selectedAircraft = SELECTED_AC;
-	getManuvable(f, &rtn)  
+	getManuvable_(f, &rtn, false);  
+
 	int remainingMP =  parseManuv(&rtn);
 	modifyManeuverableByParsedManuv(&rtn);
 // under construction: need to create plot tree
 //      also need to call parseManuv() and modifyManuvableByParsedManuv()
 //
 
-	aiCreatePlotBranches(p_new, rtn, remainingMP);
-	if (rtn.turnLeft == 0) {
-	}
+	int	plotSize;
+	plotSize = createPlotBranches_(p_new, rtn, remainingMP);
+
 }
 
-void Aircraft::aiCreatePlotTree()
+void Aircraft::createPlotTree_()
 {
-	aiClearPlotTree();
-	aiCreatePlotTreeRoot();
+	clearPlotTree();
+	createPlotTreeRoot_();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1875,7 +2102,7 @@ void PlayerAirForce::cmdToPlayerGetManuvable(
 	cmdForm *p_rtn, 
 	list<std::shared_ptr<Aircraft>>::iterator itr)
 {
-	(*itr)->getManuvable(form, p_rtn);
+	(*itr)->getManuvable_(form, p_rtn, false);
 /*	maneuverable manuv;
 	manuv = (*itr)->ReferManuvReqTbl();
 	(*itr)->modifyManeuverableByDamage(&manuv);
@@ -2661,25 +2888,25 @@ bool PlayerAirForce::cmdToPlayerREPLICA_LOG(cmdForm form, cmdForm *p_rtn)
 	return true;
 }
 
-void PlayerAirForce::aiCreatePlotTrees(cmdForm form, cmdForm *p_rtn)
+void PlayerAirForce::createPlotTrees(cmdForm form, cmdForm *p_rtn)
 {
 	list<std::shared_ptr<Aircraft>>::iterator itr;
 	if (form.selectedAircraft == SELECTED_AC) {
 		if (m_ItrSelectedAircraft != mAircrafts.end()) {
-			(*m_ItrSelectedAircraft)->aiCreatePlotTree();
+			(*m_ItrSelectedAircraft)->createPlotTree_();
 //			(form.p_file)->write((char*)&(tab), sizeof(tab));
 //			writeAircraftToFile(form, m_ItrSelectedAircraft);
 		}
 	} else if (form.selectedAircraft == ALL_AC) {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
-			(*itr)->aiCreatePlotTree();
+			(*itr)->createPlotTree_();
 //			(form.p_file)->write((char*)&(tab), sizeof(tab));
 //			writeAircraftToFile(form, itr);
 		}
 	} else {
 		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
 			if ((*itr)->m_id == form.selectedAircraft) {
-				(*itr)->aiCreatePlotTree();
+				(*itr)->createPlotTree_();
 //				(form.p_file)->write((char*)&(tab), sizeof(tab));
 //				writeAircraftToFile(form, itr);
 			}
@@ -2689,7 +2916,7 @@ void PlayerAirForce::aiCreatePlotTrees(cmdForm form, cmdForm *p_rtn)
 
 void PlayerAirForce::aiPlot(cmdForm form, cmdForm *p_rtn)
 {
-	aiCreatePlotTrees(form, p_rtn);
+	createPlotTrees(form, p_rtn);
 }
 
 bool PlayerAirForce::cmdToPlayerAI_PLOT(cmdForm form, cmdForm *p_rtn)
