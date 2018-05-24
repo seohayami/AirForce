@@ -1857,9 +1857,13 @@ void Aircraft::clearPlotTree()
 
 int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 {
-	static int	plotSize = 0;
+	static int	plotNodeCnt = 0;
+	static int	plotNodeZeroMP = 0;
 
-	plotSize ++;
+	plotNodeCnt ++;
+	if (mp == 0) {
+		plotNodeZeroMP ++;
+	}
 
 	if (mp <= 0) {
 		if (form.manuvable.maxPower > 0) {
@@ -1894,10 +1898,10 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		}
 
 		if (form.manuvable.maxPower <= 0) {
-			return plotSize;
+			return plotNodeZeroMP;
 		}
 		if (form.manuvable.maxBreak <= 0) {
-			return plotSize;
+			return plotNodeZeroMP;
 		}
 
 	}
