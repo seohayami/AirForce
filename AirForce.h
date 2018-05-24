@@ -483,10 +483,10 @@ struct chunkTab{
 
 //---------------AI Player Part--------------
 struct plotNode {
-	int		manuv;
-	int		evaPt;
-	list<*plotNode>	p_plotNodes;
-	plotNode	*p_parent;
+	int			manuv;
+	int			evaPt;
+	list<plotNode *>	p_plotNodes;
+	plotNode		*p_parent;
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -797,7 +797,7 @@ protected:
 	int			m_pilotTraining;
 	int			m_pilotExperience;
 	int 			m_maxDiveSpeed;
-	list<*plotNode>>	mp_plotNodes;
+	list<plotNode *>	mp_plotNodes;
   //------------------- protected member functions ---------------------
 	HRESULT makeStrDamageCockpit(wchar_t *a_str);
 	HRESULT makeStrDamageEngine(wchar_t *a_str);
