@@ -1838,7 +1838,7 @@ void Aircraft::getManuvable_(
 
 void deletePlotNode(plotNode *p_plotNode)
 {
-	list<*plotNode>::iterator itr;
+	list<plotNode *>::iterator itr;
 	for (itr =  ((*p_plotNode).p_plotNodes).begin(); 
 	     itr != ((*p_plotNode).p_plotNodes).end(); 
 	     itr++) {
@@ -1849,7 +1849,7 @@ void deletePlotNode(plotNode *p_plotNode)
 
 void Aircraft::clearPlotTree()
 {
-	list<*plotNode>::iterator itr;
+	list<plotNode *>::iterator itr;
 	for (itr = mp_plotNodes.begin(); itr != mp_plotNodes.end(); itr++) {
 		deletePlotNode(*itr);
 	}
@@ -1859,11 +1859,48 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 {
 	static int	plotSize = 0;
 
-	if (mp <= 0) {
-		return;
-	}
-
 	plotSize ++;
+
+	if (mp <= 0) {
+		if (form.manuvable.maxPower > 0) {
+			if (p_node->manuv != MANUV_BK) {
+				this->getManuvable_(form, &form, true);
+				parseManuvPW(&form, &mp);
+				
+				plotNode	*p_new(new plotNode);
+				p_new->manuv = MANUV_PW;
+				p_new->evaPt = 0;
+				p_new->remainingMP = mp;
+				p_new->p_parent = p_node:
+				(p_node->p_plotNodes).push_front(p_new);
+		
+				createPlotBranches_(p_new, form, mp);
+			}
+		}
+		if (form.manuvable.maxBreak > 0) {
+			if (p_node->manuv != MANUV_PW) {
+				this->getManuvable_(form, &form, true);
+				parseManuvBK(&form, &mp);
+				
+				plotNode	*p_new(new plotNode);
+				p_new->manuv = MANUV_BK;
+				p_new->evaPt = 0;
+				p_new->remainingMP = mp;
+				p_new->p_parent = p_node:
+				(p_node->p_plotNodes).push_front(p_new);
+		
+				createPlotBranches_(p_new, form, mp);
+			}
+		}
+
+		if (form.manuvable.maxPower <= 0) {
+			return plotSize;
+		}
+		if (form.manuvable.maxBreak <= 0) {
+			return plotSize;
+		}
+
+	}
 
 	if (form.manuvable.turnLeft == 0) {
 		this->getManuvable_(form, &form, true);
@@ -1872,6 +1909,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_TL;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1884,6 +1922,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_TR;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1896,6 +1935,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_BL;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1908,6 +1948,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_BR;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1920,6 +1961,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_SL;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1932,6 +1974,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_SR;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1944,6 +1987,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_RL;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1956,6 +2000,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_RR;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1968,6 +2013,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_LC;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
@@ -1980,36 +2026,12 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_LD;
 		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
 		p_new->p_parent = p_node:
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
 	}
-	if (form.manuvable.maxPower > 0) {
-		this->getManuvable_(form, &form, true);
-		parseManuvPW(&form, &mp);
-		
-		plotNode	*p_new(new plotNode);
-		p_new->manuv = MANUV_PW;
-		p_new->evaPt = 0;
-		p_new->p_parent = p_node:
-		(p_node->p_plotNodes).push_front(p_new);
-
-		createPlotBranches_(p_new, form, mp);
-	}
-	if (form.manuvable.maxBreak > 0) {
-		this->getManuvable_(form, &form, true);
-		parseManuvBK(&form, &mp);
-		
-		plotNode	*p_new(new plotNode);
-		p_new->manuv = MANUV_BK;
-		p_new->evaPt = 0;
-		p_new->p_parent = p_node:
-		(p_node->p_plotNodes).push_front(p_new);
-
-		createPlotBranches_(p_new, form, mp);
-	}
-	return plotSize;
 }
 
 void Aircraft::createPlotTreeRoot_()

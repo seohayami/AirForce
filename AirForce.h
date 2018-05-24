@@ -485,6 +485,7 @@ struct chunkTab{
 struct plotNode {
 	int			manuv;
 	int			evaPt;
+	int			remainingMP;
 	list<plotNode *>	p_plotNodes;
 	plotNode		*p_parent;
 };
