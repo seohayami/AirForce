@@ -2060,6 +2060,15 @@ void Aircraft::createPlotTreeRoot_()
 	int	plotSize;
 	plotSize = createPlotBranches_(p_new, rtn, remainingMP);
 
+	wchar_t buf[MAX_MESSAGELENGTH];
+	wsprintf(buf, L"Plot Node Count = %03d \n", 
+			plotSize);
+	MessageBox(NULL, 
+		buf,
+		NULL,
+		MB_OKCANCEL | MB_ICONSTOP
+	);
+
 }
 
 void Aircraft::createPlotTree_()
