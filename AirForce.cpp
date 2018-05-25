@@ -1857,6 +1857,9 @@ void Aircraft::clearPlotTree()
 
 int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 {
+// Return: 
+// 	count of plotNodes whose movePoint == 0 in the plotTree.
+//
 	static int	plotNodeCnt = 0;
 	static int	plotNodeZeroMP = 0;
 
@@ -1875,7 +1878,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 				p_new->manuv = MANUV_PW;
 				p_new->evaPt = 0;
 				p_new->remainingMP = mp;
-				p_new->p_parent = p_node:
+				p_new->p_parent = p_node;
 				(p_node->p_plotNodes).push_front(p_new);
 		
 				createPlotBranches_(p_new, form, mp);
@@ -1890,7 +1893,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 				p_new->manuv = MANUV_BK;
 				p_new->evaPt = 0;
 				p_new->remainingMP = mp;
-				p_new->p_parent = p_node:
+				p_new->p_parent = p_node;
 				(p_node->p_plotNodes).push_front(p_new);
 		
 				createPlotBranches_(p_new, form, mp);
@@ -1914,7 +1917,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_TL;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -1927,7 +1930,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_TR;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -1940,7 +1943,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_BL;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -1953,7 +1956,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_BR;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -1966,7 +1969,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_SL;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -1979,7 +1982,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_SR;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -1992,7 +1995,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_RL;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -2005,7 +2008,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_RR;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -2018,7 +2021,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_LC;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -2031,7 +2034,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 		p_new->manuv = MANUV_LD;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
-		p_new->p_parent = p_node:
+		p_new->p_parent = p_node;
 		(p_node->p_plotNodes).push_front(p_new);
 
 		createPlotBranches_(p_new, form, mp);
@@ -2042,7 +2045,7 @@ void Aircraft::createPlotTreeRoot_()
 {
 	plotNode	*p_new(new plotNode);
 	p_new->manuv = MANUV_NP;
-	p_new->evapt = 0;
+	p_new->evaPt = 0;
 	p_new->p_parent = NULL;
 
 	mp_plotNodes.push_front(p_new);
@@ -2875,8 +2878,6 @@ void PlayerAirForce::cmdToPlayerWRITE_FILE(cmdForm form, cmdForm *p_rtn)
 bool PlayerAirForce::cmdToPlayerREPLICA_AC(cmdForm form, cmdForm *p_rtn)
 {
 
-	int	i;
-
 	(form.p_file)->read((char*)form.p_ptr, sizeof(Aircraft));
 	if ((form.p_file)->fail()) {
 		MessageBox(NULL, 
@@ -2960,7 +2961,7 @@ void PlayerAirForce::aiPlot(cmdForm form, cmdForm *p_rtn)
 bool PlayerAirForce::cmdToPlayerAI_PLOT(cmdForm form, cmdForm *p_rtn)
 {
 	if (! m_ai) {
-		return false
+		return false;
 	}
 	aiPlot(form, p_rtn);
 	return true;
@@ -3631,7 +3632,8 @@ void MapAirForce::cmdToMap(int cmd, cmdForm form, cmdForm *p_rtn)
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv)
+//void MapAirForce::parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv)
+void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv)
 {
 	if ((manuv == MANUV_SR) || (manuv == MANUV_RR)) {
 		if ((p_form->virCorX) % 2 == 0) {
@@ -3656,7 +3658,8 @@ void MapAirForce::parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv)
+//void MapAirForce::parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv)
+void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv)
 {
 	if ((manuv == MANUV_SR) || (manuv == MANUV_RR)) {
 		if ((p_form->virCorX) % 2 == 0) {
@@ -3682,7 +3685,8 @@ void MapAirForce::parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int m
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv)
+//void MapAirForce::parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv)
+void parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv)
 {
 	if ((manuv == MANUV_SR) || (manuv == MANUV_RR)) {
 		if ((p_form->virCorX) % 2 == 0) {
@@ -3709,7 +3713,8 @@ void MapAirForce::parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int m
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorSlipRollSouth(cmdForm *p_form, int manuv)
+//void MapAirForce::parseManuvModifyVirCorSlipRollSouth(cmdForm *p_form, int manuv)
+void parseManuvModifyVirCorSlipRollSouth(cmdForm *p_form, int manuv)
 {
 	if ((manuv == MANUV_SR) || (manuv == MANUV_RR)) {
 		if ((p_form->virCorX) % 2 == 0) {
@@ -3736,7 +3741,8 @@ void MapAirForce::parseManuvModifyVirCorSlipRollSouth(cmdForm *p_form, int manuv
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorSlipRollSouthWest(cmdForm *p_form, int manuv)
+//void MapAirForce::parseManuvModifyVirCorSlipRollSouthWest(cmdForm *p_form, int manuv)
+void parseManuvModifyVirCorSlipRollSouthWest(cmdForm *p_form, int manuv)
 {
 	if ((manuv == MANUV_SR) || (manuv == MANUV_RR)) {
 		if ((p_form->virCorX) % 2 == 0) {
@@ -3763,7 +3769,8 @@ void MapAirForce::parseManuvModifyVirCorSlipRollSouthWest(cmdForm *p_form, int m
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorSlipRollNorthWest(cmdForm *p_form, int manuv)
+//void MapAirForce::parseManuvModifyVirCorSlipRollNorthWest(cmdForm *p_form, int manuv)
+void parseManuvModifyVirCorSlipRollNorthWest(cmdForm *p_form, int manuv)
 {
 	if ((manuv == MANUV_SR) || (manuv == MANUV_RR)) {
 		if ((p_form->virCorX) % 2 == 0) {
@@ -3790,7 +3797,8 @@ void MapAirForce::parseManuvModifyVirCorSlipRollNorthWest(cmdForm *p_form, int m
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorSlipRoll(cmdForm *p_form, int manuv)
+//void MapAirForce::parseManuvModifyVirCorSlipRoll(cmdForm *p_form, int manuv)
+void parseManuvModifyVirCorSlipRoll(cmdForm *p_form, int manuv)
 {
 	switch ((int) p_form->heading) {
 		case 0: // North
@@ -3832,7 +3840,8 @@ void appendManuvToFormManuv(cmdForm *p_form, int manu)
 	p_form->manuv[i + 1] = MANUV_EN;
 }
 
-void MapAirForce::parseManuvTL(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvTL(cmdForm *p_form, int *p_mp)
+void parseManuvTL(cmdForm *p_form, int *p_mp)
 {
 	p_form->speed--;
 	(*p_mp)--;
@@ -3847,7 +3856,8 @@ void MapAirForce::parseManuvTL(cmdForm *p_form, int *p_mp)
 	appendManuvToFormManuv(p_form, MANUV_TL);
 }
 
-void MapAirForce::parseManuvTR(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvTR(cmdForm *p_form, int *p_mp)
+void parseManuvTR(cmdForm *p_form, int *p_mp)
 {
 	p_form->speed--;
 	(*p_mp)--;
@@ -3859,19 +3869,22 @@ void MapAirForce::parseManuvTR(cmdForm *p_form, int *p_mp)
 	appendManuvToFormManuv(p_form, MANUV_TR);
 }
 
-void MapAirForce::parseManuvBL(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvBL(cmdForm *p_form, int *p_mp)
+void parseManuvBL(cmdForm *p_form, int *p_mp)
 {
 	p_form->bank = (p_form->bank + 1) % 6;
 	appendManuvToFormManuv(p_form, MANUV_BL);
 }
 
-void MapAirForce::parseManuvBR(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvBR(cmdForm *p_form, int *p_mp)
+void parseManuvBR(cmdForm *p_form, int *p_mp)
 {
 	p_form->bank = (p_form->bank + 5) % 6;
 	appendManuvToFormManuv(p_form, MANUV_BR);
 }
 
-void MapAirForce::parseManuvSL(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvSL(cmdForm *p_form, int *p_mp)
+void parseManuvSL(cmdForm *p_form, int *p_mp)
 {
 	p_form->speed -= 2;
 	(*p_mp)--;
@@ -3881,7 +3894,8 @@ void MapAirForce::parseManuvSL(cmdForm *p_form, int *p_mp)
 	appendManuvToFormManuv(p_form, MANUV_SL);
 }
 
-void MapAirForce::parseManuvSR(cmdForm *p_form, int *mp)
+//void MapAirForce::parseManuvSR(cmdForm *p_form, int *mp)
+void parseManuvSR(cmdForm *p_form, int *mp)
 {
 	p_form->speed -= 2;
 	(*mp)--;
@@ -3891,7 +3905,8 @@ void MapAirForce::parseManuvSR(cmdForm *p_form, int *mp)
 	appendManuvToFormManuv(p_form, MANUV_SR);
 }
 
-void MapAirForce::parseManuvRL(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvRL(cmdForm *p_form, int *p_mp)
+void parseManuvRL(cmdForm *p_form, int *p_mp)
 {
 	p_form->speed -= 1;
 	(*p_mp)--;
@@ -3902,7 +3917,8 @@ void MapAirForce::parseManuvRL(cmdForm *p_form, int *p_mp)
 	appendManuvToFormManuv(p_form, MANUV_RL);
 }
 
-void MapAirForce::parseManuvRR(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvRR(cmdForm *p_form, int *p_mp)
+void parseManuvRR(cmdForm *p_form, int *p_mp)
 {
 	p_form->speed -= 1;
 	(*p_mp)--;
@@ -3919,7 +3935,8 @@ void MapAirForce::parseManuvRR(cmdForm *p_form, int *p_mp)
 	appendManuvToFormManuv(p_form, MANUV_RR);
 }
 
-void MapAirForce::parseManuvLC(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvLC(cmdForm *p_form, int *p_mp)
+void parseManuvLC(cmdForm *p_form, int *p_mp)
 {
 	p_form->speed -= 2;
 	(*p_mp)--;
@@ -3932,7 +3949,8 @@ void MapAirForce::parseManuvLC(cmdForm *p_form, int *p_mp)
 	appendManuvToFormManuv(p_form, MANUV_LC);
 }
 
-void MapAirForce::parseManuvLD(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvLD(cmdForm *p_form, int *p_mp)
+void parseManuvLD(cmdForm *p_form, int *p_mp)
 {
 	p_form->speed -= 2;
 	(*p_mp)--;
@@ -3945,33 +3963,39 @@ void MapAirForce::parseManuvLD(cmdForm *p_form, int *p_mp)
 	appendManuvToFormManuv(p_form, MANUV_LD);
 }
 
-void MapAirForce::parseManuvPW(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvPW(cmdForm *p_form, int *p_mp)
+void parseManuvPW(cmdForm *p_form, int *p_mp)
 {
 	(p_form->speed)++;
 	((p_form->manuvable).maxPower)--;
 	appendManuvToFormManuv(p_form, MANUV_PW);
 }
 
-void MapAirForce::parseManuvBK(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvBK(cmdForm *p_form, int *p_mp)
+void parseManuvBK(cmdForm *p_form, int *p_mp)
 {
 	(p_form->speed)--;
 	((p_form->manuvable).maxBreak)--;
 	appendManuvToFormManuv(p_form, MANUV_BK);
 }
 
-void MapAirForce::parseManuvDB(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvDB(cmdForm *p_form, int *p_mp)
+void parseManuvDB(cmdForm *p_form, int *p_mp)
 {
 }
 
-void MapAirForce::parseManuvFR(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvFR(cmdForm *p_form, int *p_mp)
+void parseManuvFR(cmdForm *p_form, int *p_mp)
 {
 }
 
-void MapAirForce::parseManuvFG(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvFG(cmdForm *p_form, int *p_mp)
+void parseManuvFG(cmdForm *p_form, int *p_mp)
 {
 }
 
-void MapAirForce::parseManuvModifyVirCorFwdNorth(cmdForm *p_form)
+//void MapAirForce::parseManuvModifyVirCorFwdNorth(cmdForm *p_form)
+void parseManuvModifyVirCorFwdNorth(cmdForm *p_form)
 {
 	if ((p_form->virCorX) % 2 == 0) {
 //		p_form->virCorX ++;
@@ -3982,7 +4006,8 @@ void MapAirForce::parseManuvModifyVirCorFwdNorth(cmdForm *p_form)
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorFwdNorthEast(cmdForm *p_form)
+//void MapAirForce::parseManuvModifyVirCorFwdNorthEast(cmdForm *p_form)
+void parseManuvModifyVirCorFwdNorthEast(cmdForm *p_form)
 {
 	if ((p_form->virCorX) % 2 == 0) {
 		p_form->virCorX ++;
@@ -3993,7 +4018,8 @@ void MapAirForce::parseManuvModifyVirCorFwdNorthEast(cmdForm *p_form)
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorFwdSouthEast(cmdForm *p_form)
+//void MapAirForce::parseManuvModifyVirCorFwdSouthEast(cmdForm *p_form)
+void parseManuvModifyVirCorFwdSouthEast(cmdForm *p_form)
 {
 	if ((p_form->virCorX) % 2 == 0) {
 		p_form->virCorX ++;
@@ -4004,7 +4030,8 @@ void MapAirForce::parseManuvModifyVirCorFwdSouthEast(cmdForm *p_form)
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorFwdSouth(cmdForm *p_form)
+//void MapAirForce::parseManuvModifyVirCorFwdSouth(cmdForm *p_form)
+void parseManuvModifyVirCorFwdSouth(cmdForm *p_form)
 {
 	if ((p_form->virCorX) % 2 == 0) {
 //		p_form->virCorX ++;
@@ -4015,7 +4042,8 @@ void MapAirForce::parseManuvModifyVirCorFwdSouth(cmdForm *p_form)
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorFwdSouthWest(cmdForm *p_form)
+//void MapAirForce::parseManuvModifyVirCorFwdSouthWest(cmdForm *p_form)
+void parseManuvModifyVirCorFwdSouthWest(cmdForm *p_form)
 {
 	if ((p_form->virCorX) % 2 == 0) {
 		p_form->virCorX --;
@@ -4026,7 +4054,8 @@ void MapAirForce::parseManuvModifyVirCorFwdSouthWest(cmdForm *p_form)
 	}
 }
 
-void MapAirForce::parseManuvModifyVirCorFwdNorthWest(cmdForm *p_form)
+//void MapAirForce::parseManuvModifyVirCorFwdNorthWest(cmdForm *p_form)
+void parseManuvModifyVirCorFwdNorthWest(cmdForm *p_form)
 {
 	if ((p_form->virCorX) % 2 == 0) {
 		p_form->virCorX --;
@@ -4037,7 +4066,8 @@ void MapAirForce::parseManuvModifyVirCorFwdNorthWest(cmdForm *p_form)
 	}
 }
 
-void MapAirForce::parseManuvMoveFwdOneHex(cmdForm *p_form, int *p_mp)
+//void MapAirForce::parseManuvMoveFwdOneHex(cmdForm *p_form, int *p_mp)
+void parseManuvMoveFwdOneHex(cmdForm *p_form, int *p_mp)
 {
 	(*p_mp)--;
 	(p_form->manuvable.remainingMP) --;
@@ -4072,7 +4102,8 @@ void MapAirForce::parseManuvMoveFwdOneHex(cmdForm *p_form, int *p_mp)
 	}
 }
 
-void MapAirForce::parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd)
+//void MapAirForce::parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd)
+void parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd)
 {
 	int i;
 
@@ -4083,21 +4114,24 @@ void MapAirForce::parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd)
 
 }
 
-void MapAirForce::parseManuvClimb(cmdForm *p_form, int *p_mp, int climb)
+//void MapAirForce::parseManuvClimb(cmdForm *p_form, int *p_mp, int climb)
+void parseManuvClimb(cmdForm *p_form, int *p_mp, int climb)
 {
 // climb; feet
 	p_form->alt += (float)(climb) / 1000.0f;
 	appendManuvToFormManuv(p_form, climb);
 }
 
-void MapAirForce::parseManuvDive(cmdForm *p_form, int *p_mp, int dive)
+//void MapAirForce::parseManuvDive(cmdForm *p_form, int *p_mp, int dive)
+void parseManuvDive(cmdForm *p_form, int *p_mp, int dive)
 {
 // dive; negative integer in feet
 	p_form->alt += (float)(dive) / 1000.0f;
 	appendManuvToFormManuv(p_form, dive);
 }
 
-void MapAirForce::parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading)
+//void MapAirForce::parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading)
+void parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading)
 {
 	intHeading = intHeading % 360;
 
@@ -4130,7 +4164,8 @@ void MapAirForce::parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int in
 	}
 }
 
-void MapAirForce::parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef)
+//void MapAirForce::parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef)
+void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef)
 {
 	int	intHeading = (int)p_form->heading;
 
@@ -4176,7 +4211,8 @@ void MapAirForce::parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef)
 	}
 }
 
-int MapAirForce::parseManuv(cmdForm *p_form) 
+//int MapAirForce::parseManuv(cmdForm *p_form) 
+int parseManuv(cmdForm *p_form) 
 {
 // REQUIREMENT:
 // 	*p_form must be a returned form of GET_MANUVABLE command
@@ -5918,6 +5954,7 @@ LRESULT MapAirForce::HandleDlgDeploy(HWND hDlgWnd,
 					       		CB_SETCURSEL, 
 					       		nose,
 					       		0);
+        				InvalidateRect(hDlgWnd, NULL, TRUE);
 
 				} else {
 					return FALSE;
