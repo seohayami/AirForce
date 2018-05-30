@@ -1911,10 +1911,10 @@ void Aircraft::clearPlotTree()
 
 int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 {
-//	static int	plotNodeCnt = 0;
-	int	plotNodeCnt = 0;
-//	static int	plotNodeZeroMP = 0;
-	int	plotNodeZeroMP = 0;
+	static int	plotNodeCnt = 0;
+//	int	plotNodeCnt = 0;
+	static int	plotNodeZeroMP = 0;
+//	int	plotNodeZeroMP = 0;
 
 	plotNodeCnt ++;
 	if (mp == 0) {
