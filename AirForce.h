@@ -883,7 +883,7 @@ protected:
 	void ModifyGunPowerByDamage(gunPower *p_gunPower);
 	void copyPrevManuvToForm_(cmdForm *p_rtn);
 	void clearPlotTree();
-	int createPlotBranches_(plotNode *p_node, cmdForm form, int mp);
+	int createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int turnCnt);
 	void createPlotTreeRoot_();
 
 
