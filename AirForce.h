@@ -349,8 +349,10 @@ struct cmdForm {
 	int		virCorY;
 	float		heading;
 	int		speed;
+	int		speedInit; 	//in formMode, used as m_speed
 	spdIncTblEntry	speedCat;	//STAL,DIVE,LEVL,MANV,NA
 	float		alt;
+	float		altInit;	//in formMode, used as m_alt
 	int		bank;
 	int		nose;
 	bool		loaded;
@@ -491,6 +493,47 @@ struct plotNode {
 	plotNode		*p_parent;
 };
 
+//--------------- Common Functions --------------
+void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv);
+void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv);
+void parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv);
+void parseManuvModifyVirCorSlipRollSouth(cmdForm *p_form, int manuv);
+void parseManuvModifyVirCorSlipRollSouthWest(cmdForm *p_form, int manuv);
+void parseManuvModifyVirCorSlipRollNorthWest(cmdForm *p_form, int manuv);
+void parseManuvModifyVirCorSlipRoll(cmdForm *p_form, int manuv);
+void appendManuvToFormManuv(cmdForm *p_form, int manu);
+void parseManuvTL(cmdForm *p_form, int *p_mp);
+void parseManuvTR(cmdForm *p_form, int *p_mp);
+void parseManuvBL(cmdForm *p_form, int *p_mp);
+void parseManuvBR(cmdForm *p_form, int *p_mp);
+void parseManuvSL(cmdForm *p_form, int *p_mp);
+void parseManuvSR(cmdForm *p_form, int *p_mp);
+void parseManuvRL(cmdForm *p_form, int *p_mp);
+void parseManuvRR(cmdForm *p_form, int *p_mp);
+void parseManuvLC(cmdForm *p_form, int *p_mp);
+void parseManuvLD(cmdForm *p_form, int *p_mp);
+void parseManuvPW(cmdForm *p_form, int *p_mp);
+void parseManuvBK(cmdForm *p_form, int *p_mp);
+
+void parseManuvDB(cmdForm *p_form, int *p_mp);
+void parseManuvFR(cmdForm *p_form, int *p_mp);
+void parseManuvFG(cmdForm *p_form, int *p_mp);
+void parseManuvModifyVirCorFwdNorth(cmdForm *p_form);
+void parseManuvModifyVirCorFwdNorthEast(cmdForm *p_form);
+void parseManuvModifyVirCorFwdSouthEast(cmdForm *p_form);
+void parseManuvModifyVirCorFwdSouth(cmdForm *p_form);
+void parseManuvModifyVirCorFwdSouthWest(cmdForm *p_form);
+void parseManuvModifyVirCorFwdNorthWest(cmdForm *p_form);
+void parseManuvMoveFwdOneHex(cmdForm *p_form, int *p_mp);
+void parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd);
+void parseManuvClimb(cmdForm *p_form, int *p_mp, int climb);
+void parseManuvDive(cmdForm *p_form, int *p_mp, int dive);
+void parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading);
+void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef);
+int parseManuv(cmdForm *p_form);
+
+void 	modifyManeuverableByParsedManuv(cmdForm *form);
+
 ///////////////////////////////////////////////////////////////////////////
 // 
 // 	MapAirForce.h
@@ -547,42 +590,42 @@ protected:
   	void finalizeManuvByAcID(cmdForm form);
   	void reflectErasePlotByAcID(cmdForm form);
 	void repaintMap(cmdForm form);
-	void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv);
-	void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv);
-	void parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv);
-	void parseManuvModifyVirCorSlipRollSouth(cmdForm *p_form, int manuv);
-	void parseManuvModifyVirCorSlipRollSouthWest(cmdForm *p_form, int manuv);
-	void parseManuvModifyVirCorSlipRollNorthWest(cmdForm *p_form, int manuv);
-	void parseManuvModifyVirCorSlipRoll(cmdForm *p_form, int manuv);
+//	void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv);
+//	void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv);
+//	void parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv);
+//	void parseManuvModifyVirCorSlipRollSouth(cmdForm *p_form, int manuv);
+//	void parseManuvModifyVirCorSlipRollSouthWest(cmdForm *p_form, int manuv);
+//	void parseManuvModifyVirCorSlipRollNorthWest(cmdForm *p_form, int manuv);
+//	void parseManuvModifyVirCorSlipRoll(cmdForm *p_form, int manuv);
 //	void appendManuvToFormManuv(cmdForm *p_form, int manu);
-	void parseManuvTL(cmdForm *p_form, int *p_mp);
-	void parseManuvTR(cmdForm *p_form, int *p_mp);
-	void parseManuvBL(cmdForm *p_form, int *p_mp);
-	void parseManuvBR(cmdForm *p_form, int *p_mp);
-	void parseManuvSL(cmdForm *p_form, int *p_mp);
-	void parseManuvSR(cmdForm *p_form, int *p_mp);
-	void parseManuvRL(cmdForm *p_form, int *p_mp);
-	void parseManuvRR(cmdForm *p_form, int *p_mp);
-	void parseManuvLC(cmdForm *p_form, int *p_mp);
-	void parseManuvLD(cmdForm *p_form, int *p_mp);
-	void parseManuvPW(cmdForm *p_form, int *p_mp);
-	void parseManuvBK(cmdForm *p_form, int *p_mp);
-	void parseManuvDB(cmdForm *p_form, int *p_mp);
-	void parseManuvFR(cmdForm *p_form, int *p_mp);
-	void parseManuvFG(cmdForm *p_form, int *p_mp);
-	void parseManuvModifyVirCorFwdNorth(cmdForm *p_form);
-	void parseManuvModifyVirCorFwdNorthEast(cmdForm *p_form);
-	void parseManuvModifyVirCorFwdSouthEast(cmdForm *p_form);
-	void parseManuvModifyVirCorFwdSouth(cmdForm *p_form);
-	void parseManuvModifyVirCorFwdSouthWest(cmdForm *p_form);
-	void parseManuvModifyVirCorFwdNorthWest(cmdForm *p_form);
-	void parseManuvMoveFwdOneHex(cmdForm *p_form, int *p_mp);
-	void parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd);
-	void parseManuvClimb(cmdForm *p_form, int *p_mp, int climb);
-	void parseManuvDive(cmdForm *p_form, int *p_mp, int dive);
-	void parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading);
-	void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef);
-	int parseManuv(cmdForm *p_form);
+//	void parseManuvTL(cmdForm *p_form, int *p_mp);
+//	void parseManuvTR(cmdForm *p_form, int *p_mp);
+//	void parseManuvBL(cmdForm *p_form, int *p_mp);
+//	void parseManuvBR(cmdForm *p_form, int *p_mp);
+//	void parseManuvSL(cmdForm *p_form, int *p_mp);
+//	void parseManuvSR(cmdForm *p_form, int *p_mp);
+//	void parseManuvRL(cmdForm *p_form, int *p_mp);
+//	void parseManuvRR(cmdForm *p_form, int *p_mp);
+//	void parseManuvLC(cmdForm *p_form, int *p_mp);
+//	void parseManuvLD(cmdForm *p_form, int *p_mp);
+//	void parseManuvPW(cmdForm *p_form, int *p_mp);
+//	void parseManuvBK(cmdForm *p_form, int *p_mp);
+//	void parseManuvDB(cmdForm *p_form, int *p_mp);
+//	void parseManuvFR(cmdForm *p_form, int *p_mp);
+//	void parseManuvFG(cmdForm *p_form, int *p_mp);
+//	void parseManuvModifyVirCorFwdNorth(cmdForm *p_form);
+//	void parseManuvModifyVirCorFwdNorthEast(cmdForm *p_form);
+//	void parseManuvModifyVirCorFwdSouthEast(cmdForm *p_form);
+//	void parseManuvModifyVirCorFwdSouth(cmdForm *p_form);
+//	void parseManuvModifyVirCorFwdSouthWest(cmdForm *p_form);
+//	void parseManuvModifyVirCorFwdNorthWest(cmdForm *p_form);
+//	void parseManuvMoveFwdOneHex(cmdForm *p_form, int *p_mp);
+//	void parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd);
+//	void parseManuvClimb(cmdForm *p_form, int *p_mp, int climb);
+//	void parseManuvDive(cmdForm *p_form, int *p_mp, int dive);
+//	void parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading);
+//	void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef);
+//	int parseManuv(cmdForm *p_form);
 	int getDistanceHex(cmdForm formS, cmdForm fromD);
 
   	D2D1_POINT_2F	virCorToCenterF(int virCorX, int virCorY);
@@ -839,11 +882,9 @@ protected:
 	void ModifyGunPowerByAmmo(gunPower *p_gunPower);
 	void ModifyGunPowerByDamage(gunPower *p_gunPower);
 	void copyPrevManuvToForm_(cmdForm *p_rtn);
-	void getManuvable_(cmdForm form, cmdForm *p_rtn, bool formMode);
 	void clearPlotTree();
 	int createPlotBranches_(plotNode *p_node, cmdForm form, int mp);
 	void createPlotTreeRoot_();
-	void createPlotTree_();
 
 
 public:
@@ -1032,7 +1073,7 @@ public:
 		);
 
 	void Aircraft::GetLimit(int acm, cmdForm *p_rtn);
-	spdIncTblEntry ReferSpeedIncTbl();
+	spdIncTblEntry referSpeedIncTbl_(cmdForm form, bool formMode);
 	maneuverable ReferManuvReqTbl_(cmdForm f, bool formMode);
 	void modifyManeuverableByDamage(maneuverable  *p_manuvable);
 	void modifyManeuverableByPilot(maneuverable *p_manuvable);
@@ -1040,6 +1081,8 @@ public:
 	firingArcRange ReferFiringRange();
 	gunPower ReferGunPower();
 	void copyAcToForm(cmdForm *p_form);
+	void getManuvable_(cmdForm form, cmdForm *p_rtn, bool formMode);
+	void createPlotTree_();
 };
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1057,7 +1100,6 @@ protected:
 	D2D1_POINT_2F		m_ptMouse;
 	float			m_drawOriginX;
 	float			m_drawOriginY;
-	bool			m_ai;
 
   //------------------- protected member functions ---------------------
   	void cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn);
@@ -1139,6 +1181,7 @@ public:
 	list<shared_ptr<Aircraft>>::iterator m_ItrSelectedAircraft;
 	list<shared_ptr<Aircraft>> mAircrafts;
 	LONG_PTR		mp_ownerGame;
+	bool			m_ai;
 
   //------------------- public member functions ---------------------
 	void cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn);
@@ -1228,7 +1271,7 @@ protected:
 	BOOL calculateFiringEnt(cmdForm *p_form);
 	void cmdAppendFiring(cmdForm form);
 	void cmdGetFirings(cmdForm form, cmdForm *p_rtnForms);
-	void addPlayerAndCraftIfNeeded(int acmIndex, int pmIndex, wchar_t *name);
+	void addPlayerAndCraftIfNeeded(int acmIndex, int pmIndex, wchar_t *name, bool ai);
 	void OnPaint();
 	int referHitTableWing(int column, int die);
 	int referHitTableFuselage(int column, int die);

@@ -748,14 +748,22 @@ void Aircraft::GetLimit(int acm, cmdForm *p_rtn)
 
 }
 
-int Aircraft::GetAltTblIndex()
+int Aircraft::getAltTblIndex_(cmdForm form, bool formMode)
 {
-	int i;
+	float	a;
+	int 	i;
+
+	if (formMode) {
+		a = form.altInit;
+	} else {
+		a = m_alt;
+	}
+
 
 	for (i = 0; 
 		aircraftModels[mAircraftModel].altIndex[i] > 0;
 		i++) {
-		if (aircraftModels[mAircraftModel].altIndex[i] >= m_alt) {
+		if (aircraftModels[mAircraftModel].altIndex[i] >= a) {
 			return i;
 		}
 	}
@@ -763,9 +771,16 @@ int Aircraft::GetAltTblIndex()
 	return -1;
 }
 
-spdIncTblEntry Aircraft::ReferSpeedIncTbl()
+spdIncTblEntry Aircraft::referSpeedIncTbl_(cmdForm form, bool formMode)
 {
-	int altTblIndex = this->GetAltTblIndex();
+	int	s;
+	if (formMode) {
+		s = form.speedInit;
+	} else {
+		s = m_speed;
+	}
+
+	int altTblIndex = this->getAltTblIndex_(form, formMode);
 
 	if (altTblIndex < 0) {
 		MessageBox(NULL, 
@@ -776,15 +791,16 @@ spdIncTblEntry Aircraft::ReferSpeedIncTbl()
 	}
 
 	if (m_loaded) {
-		return aircraftModels[mAircraftModel].spdIncTbl[1][altTblIndex][m_speed];
+		return aircraftModels[mAircraftModel].spdIncTbl[1][altTblIndex][s];
 	} else {
-		return aircraftModels[mAircraftModel].spdIncTbl[0][altTblIndex][m_speed];
+		return aircraftModels[mAircraftModel].spdIncTbl[0][altTblIndex][s];
 	}
 }
 
 float Aircraft::GetMaxAltChgClimb(int spdIncIndex)
 {
-	int altTblIndex = this->GetAltTblIndex();
+	cmdForm	fDummy;
+	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 	int i;
 	float maxClimb = 0.0f;
 
@@ -799,7 +815,8 @@ float Aircraft::GetMaxAltChgClimb(int spdIncIndex)
 
 float Aircraft::GetMaxAltChgDive(int spdIncIndex)
 {
-	int altTblIndex = this->GetAltTblIndex();
+	cmdForm	fDummy;
+	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 	int i;
 	float maxDive = 0.0f;
 
@@ -814,21 +831,24 @@ float Aircraft::GetMaxAltChgDive(int spdIncIndex)
 
 int Aircraft::GetMaxPower()
 {
-	int altTblIndex = this->GetAltTblIndex();
+	cmdForm	fDummy;
+	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 
 	return aircraftModels[mAircraftModel].speedChgTbl[0][altTblIndex];
 }
 
 int Aircraft::GetMaxBreak()
 {
-	int altTblIndex = this->GetAltTblIndex();
+	cmdForm	fDummy;
+	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 
 	return aircraftModels[mAircraftModel].speedChgTbl[1][altTblIndex];
 }
 
 int Aircraft::GetMaxDiveSpeed()
 {
-	int altTblIndex = this->GetAltTblIndex();
+	cmdForm	fDummy;
+	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 
 	int i;
 
@@ -1145,7 +1165,8 @@ int Aircraft::getMP()
 
 maneuverable Aircraft::ReferManuvReqTblSpdInc_(int spdIncIndex, cmdForm f, bool formMode)
 {
-	int altTblIndex = this->GetAltTblIndex();
+	cmdForm	fDummy;
+	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 	maneuverable	rtn;
 	int loaded;
 
@@ -1228,8 +1249,8 @@ maneuverable Aircraft::ReferManuvReqTblSpdInc_(int spdIncIndex, cmdForm f, bool 
 
 maneuverable Aircraft::ReferManuvReqTbl_(cmdForm f, bool formMode)
 {
-	spdIncTblEntry spdInc = this->ReferSpeedIncTbl();
-	int altTblIndex = this->GetAltTblIndex();
+	spdIncTblEntry spdInc = this->referSpeedIncTbl_(f, formMode);
+	int altTblIndex = this->getAltTblIndex_(f, formMode);
 	int i;
 	maneuverable	rtn;
 
@@ -1728,6 +1749,8 @@ void Aircraft::copyAcToForm(cmdForm *p_form)
 // 	command and playerID is NOT copied.
 // 	caller of this function must set these values.
 //
+	cmdForm		fDummy;
+
 	if (p_form == NULL) {
 		return;
 	}
@@ -1743,8 +1766,10 @@ void Aircraft::copyAcToForm(cmdForm *p_form)
 	p_form->virCorY = m_virCorY;
 	p_form->heading = m_heading;
 	p_form->speed = m_speed;
-	p_form->speedCat = ReferSpeedIncTbl();
+	p_form->speedInit = m_speed;
+	p_form->speedCat = referSpeedIncTbl_(fDummy, false);
 	p_form->alt = m_alt;
+	p_form->altInit = m_alt;
 	p_form->bank = m_bank;
 	p_form->nose = m_nose;
 	p_form->loaded = m_loaded;
@@ -1789,6 +1814,7 @@ void Aircraft::getManuvable_(
 // 		and modify it depending on the AC's damage and pilot.
 //		other items such as virCor/speed/heading is not changed
 //		from "form".
+//		Also, manuvable.maxPower/maxBreak are not changed.
 //		The purpose of this function is 
 //		"form" keeps aircraft information (need not access AC's member variable),
 //		and can do recursive call using "form".
@@ -1809,7 +1835,9 @@ void Aircraft::getManuvable_(
 		p_rtn->virCorY = m_virCorY;
 		p_rtn->heading = m_heading;
 		p_rtn->speed = m_speed;
+		p_rtn->speedInit = m_speed;
 		p_rtn->alt = m_alt;
+		p_rtn->altInit = m_alt;
 		p_rtn->bank = m_bank;
 		p_rtn->nose = m_nose;
 		for (i = 0; i < 80; i++) {
@@ -1818,14 +1846,40 @@ void Aircraft::getManuvable_(
 		this->copyPrevManuvToForm_(p_rtn);
 	} else {
 		p_rtn->command = form.command;
-		p_rtn->manuvable = manuv;
+		p_rtn->manuvable.turnLeft = manuv.turnLeft;
+		p_rtn->manuvable.turnRight = manuv.turnRight;
+		p_rtn->manuvable.bankLeft = manuv.bankLeft;
+		p_rtn->manuvable.bankRight = manuv.bankRight;
+		p_rtn->manuvable.slipLeft = manuv.slipLeft;
+		p_rtn->manuvable.slipRight = manuv.slipRight;
+		p_rtn->manuvable.rollLeft = manuv.rollLeft;
+		p_rtn->manuvable.rollRight = manuv.rollRight;
+		p_rtn->manuvable.loopClimb = manuv.loopClimb;
+		p_rtn->manuvable.maxClimb = manuv.maxClimb;
+		p_rtn->manuvable.maxDive = manuv.maxDive;
+// In "formMode", appliable Power/Break factors are stored in the form.
+// For example, if MANUV_PW is applied, then maxPower is decreased by one,
+// and the decreased value must be stored in the form.
+// Therefore the following assignment statements are commented out.
+// 2018/05/30
+//		p_rtn->manuvable.maxPower = manuv.maxPower;
+//		p_rtn->manuvable.maxBreak = manuv.maxBreak;
+		p_rtn->manuvable.dropBomb = manuv.dropBomb;
+		p_rtn->manuvable.fireRocket = manuv.fireRocket;
+		p_rtn->manuvable.fire = manuv.fire;
+		p_rtn->manuvable.remainingMP = manuv.remainingMP;
+		p_rtn->manuvable.maxDiveSpeed = manuv.maxDiveSpeed;
+		p_rtn->manuvable.mustJettson = manuv.mustJettson;
+		p_rtn->manuvable.destroyed = manuv.destroyed;
 		p_rtn->aircraftID = form.aircraftID;
 		p_rtn->acStatus = form.acStatus;
 		p_rtn->virCorX = form.virCorX;
 		p_rtn->virCorY = form.virCorY;
 		p_rtn->heading = form.heading;
 		p_rtn->speed = form.speed;
+		p_rtn->speedInit = form.speedInit;
 		p_rtn->alt = form.alt;
+		p_rtn->altInit = form.altInit;
 		p_rtn->bank = form.bank;
 		p_rtn->nose = form.nose;
 		for (i = 0; i < 80; i++) {
@@ -1857,11 +1911,10 @@ void Aircraft::clearPlotTree()
 
 int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 {
-// Return: 
-// 	count of plotNodes whose movePoint == 0 in the plotTree.
-//
-	static int	plotNodeCnt = 0;
-	static int	plotNodeZeroMP = 0;
+//	static int	plotNodeCnt = 0;
+	int	plotNodeCnt = 0;
+//	static int	plotNodeZeroMP = 0;
+	int	plotNodeZeroMP = 0;
 
 	plotNodeCnt ++;
 	if (mp == 0) {
@@ -1873,6 +1926,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 			if (p_node->manuv != MANUV_BK) {
 				this->getManuvable_(form, &form, true);
 				parseManuvPW(&form, &mp);
+				modifyManeuverableByParsedManuv(&form);
 				
 				plotNode	*p_new(new plotNode);
 				p_new->manuv = MANUV_PW;
@@ -1888,6 +1942,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 			if (p_node->manuv != MANUV_PW) {
 				this->getManuvable_(form, &form, true);
 				parseManuvBK(&form, &mp);
+				modifyManeuverableByParsedManuv(&form);
 				
 				plotNode	*p_new(new plotNode);
 				p_new->manuv = MANUV_BK;
@@ -1912,6 +1967,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.turnLeft == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvTL(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_TL;
@@ -1925,6 +1981,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.turnRight == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvTR(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_TR;
@@ -1938,6 +1995,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.bankLeft == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvBL(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_BL;
@@ -1951,6 +2009,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.bankRight == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvBR(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_BR;
@@ -1964,6 +2023,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.slipLeft == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvSL(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_SL;
@@ -1977,6 +2037,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.slipRight == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvSR(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_SR;
@@ -1990,6 +2051,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.rollLeft == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvRL(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_RL;
@@ -2003,6 +2065,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.rollRight == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvRR(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_RR;
@@ -2016,6 +2079,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.loopClimb == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvLC(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_LC;
@@ -2029,9 +2093,24 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp)
 	if (form.manuvable.loopDive == 0) {
 		this->getManuvable_(form, &form, true);
 		parseManuvLD(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
 		
 		plotNode	*p_new(new plotNode);
 		p_new->manuv = MANUV_LD;
+		p_new->evaPt = 0;
+		p_new->remainingMP = mp;
+		p_new->p_parent = p_node;
+		(p_node->p_plotNodes).push_front(p_new);
+
+		createPlotBranches_(p_new, form, mp);
+	}
+	if (mp > 0) {
+		this->getManuvable_(form, &form, true);
+		parseManuvMoveFwdOneHex(&form, &mp);
+		modifyManeuverableByParsedManuv(&form);
+		
+		plotNode	*p_new(new plotNode);
+		p_new->manuv = 1;
 		p_new->evaPt = 0;
 		p_new->remainingMP = mp;
 		p_new->p_parent = p_node;
@@ -2546,8 +2625,10 @@ void PlayerAirForce::cmdToPlayerGetAcAcID(cmdForm form, cmdForm *p_rtn)
 				p_rtn[i].virCorY = (*itr)->m_virCorY;
 				p_rtn[i].heading = (*itr)->m_heading;
 				p_rtn[i].speed = (*itr)->m_speed;
-				p_rtn[i].speedCat = (*itr)->ReferSpeedIncTbl();
+				p_rtn[i].speedInit = (*itr)->m_speed;
+				p_rtn[i].speedCat = (*itr)->referSpeedIncTbl_(form, false);
 				p_rtn[i].alt = (*itr)->m_alt;
+				p_rtn[i].altInit = (*itr)->m_alt;
 				p_rtn[i].bank = (*itr)->m_bank;
 				p_rtn[i].nose = (*itr)->m_nose;
 				p_rtn[i].loaded = (*itr)->m_loaded;
@@ -3513,7 +3594,7 @@ int MapAirForce::checkIfNeedBreaks(cmdForm form)
 		return -1;	
 	}
 	spdIncTblEntry	speedCat;
-	speedCat = ((Aircraft*)(a_rtn[0].p_aircraft))->ReferSpeedIncTbl();
+	speedCat = ((Aircraft*)(a_rtn[0].p_aircraft))->referSpeedIncTbl_(form, false);
 	if (speedCat == NA) {
 		cnt = form.manuvable.maxBreak;
 	}
@@ -8036,7 +8117,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 	}
 }
 
-void GameAirForce::addPlayerAndCraftIfNeeded(int acmIndex, int pmIndex, wchar_t *name)
+void GameAirForce::addPlayerAndCraftIfNeeded(int acmIndex, int pmIndex, wchar_t *name, bool ai)
 {
 	static int	aircraftID = 1;
 
@@ -8049,6 +8130,7 @@ void GameAirForce::addPlayerAndCraftIfNeeded(int acmIndex, int pmIndex, wchar_t 
 		ptrPlayer->mp_ownerGame = (LONG_PTR)pThis;
 		ptrPlayer->mPlayerID = mNewPlayerID;
 		ptrPlayer->mPlayerRegStat = TMPREG;
+		ptrPlayer->m_ai = ai;
 		mPlayers.push_front(ptrPlayer);
 		mItrSelectedPlayer = mPlayers.begin();
 		mNewPlayerRegStat = TMPREG;
@@ -8160,19 +8242,28 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 					break;
 				case IDC_BUTTON1:  // "add ->" button
 					LRESULT resultNation;
-					LRESULT result1, result2;
+					LRESULT result1, result2, rPlayerType;
+					bool	ai;
+
 					resultNation = SendMessage(GetDlgItem(hDlgWnd, IDC_COMBO1),
 								CB_GETCURSEL,
 								0,
 								0);
-					result1 = SendMessage(GetDlgItem(hDlgWnd, IDC_LIST1),
+					result1 = SendMessage(GetDlgItem(hDlgWnd, IDC_LIST1), // list Aircraft
 						             LB_GETCURSEL, 
 						       	     0,
 						             0);	     
-					result2 = SendMessage(GetDlgItem(hDlgWnd, IDC_LIST2),
+					result2 = SendMessage(GetDlgItem(hDlgWnd, IDC_LIST2), // list Pilot
 						             LB_GETCURSEL, 
 						       	     0,
 						             0);	     
+					rPlayerType = Button_GetState(GetDlgItem(hDlgWnd, IDC_RADIO1)); // RadioButton Human Player
+					if (rPlayerType == BST_CHECKED) {
+						ai = false;					
+					} else {
+						ai = true;
+					}
+
 					if (resultNation == CB_ERR) {
 						MessageBox(NULL, 
 						           L"Select Nationality..\n",
@@ -8208,7 +8299,7 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 						       0,
 						       (LPARAM)name);
 						
-						addPlayerAndCraftIfNeeded(acmIndex, (int)result2, name);
+						addPlayerAndCraftIfNeeded(acmIndex, (int)result2, name, ai);
 					}
 
 
@@ -8280,7 +8371,11 @@ LRESULT GameAirForce::HandleDlgNewPlayer(HWND hDlgWnd,
 								}
 							}
 					}
+					break;
 
+				case IDC_RADIO1: // RadioButton Human Player
+				case IDC_RADIO2: // RadioButton AI Player
+					break;
 
 				default:
 					return FALSE;
@@ -9578,6 +9673,7 @@ void GameAirForce::onEnterGameModePlot()
 	cmdForm f;
 	f.command = AI_PLOT;
 	f.playerID = ALL_PLAYERS;
+	f.selectedAircraft = ALL_AC;
 
 	cmdToGame(AI_PLOT, f, NULL);
 }
