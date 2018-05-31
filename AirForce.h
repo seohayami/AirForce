@@ -491,6 +491,8 @@ struct plotNode {
 	int			remainingMP;
 	list<plotNode *>	p_plotNodes;
 	plotNode		*p_parent;
+	plotNode		*p_plotLeaf;
+	cmdForm			*p_plotForm;
 };
 
 //--------------- Common Functions --------------
@@ -533,6 +535,43 @@ void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef);
 int parseManuv(cmdForm *p_form);
 
 void 	modifyManeuverableByParsedManuv(cmdForm *form);
+
+enum manuType {
+	ManuvTL,
+	ManuvTR,
+	ManuvBL,
+	ManuvBR,
+	ManuvSL,
+	ManuvSR,
+	ManuvRL,
+	ManuvRR,
+	ManuvLC,
+	ManuvLD,
+	ManuvPW,
+	ManuvBK,
+	ManuvDB,
+	ManuvFR,
+	ManuvFG,
+	ManuvFW,
+};
+void (* const pf_parseManuv[])(cmdForm *p_form, int *p_mp) = {
+	parseManuvTL,
+	parseManuvTR,
+	parseManuvBL,
+	parseManuvBR,
+	parseManuvSL,
+	parseManuvSR,
+	parseManuvRL,
+	parseManuvRR,
+	parseManvuLC,
+	parseManuvLD,
+	parseManuvPW,
+	parseManuvBK,
+	parseManuvDB,
+	parseManuvFR,
+	parseManuvFG,
+	parseManuvMoveFwdOneHex,
+};
 
 ///////////////////////////////////////////////////////////////////////////
 // 
@@ -843,6 +882,7 @@ protected:
 	int			m_pilotExperience;
 	int 			m_maxDiveSpeed;
 	list<plotNode *>	mp_plotNodes;
+	plotNode		*mp_plotNodeLeaves;
   //------------------- protected member functions ---------------------
 	HRESULT makeStrDamageCockpit(wchar_t *a_str);
 	HRESULT makeStrDamageEngine(wchar_t *a_str);
@@ -923,6 +963,7 @@ public:
 
   //------------------- public member functions ---------------------
 	Aircraft::Aircraft() {
+	// Constructor
 		m_id = -1;
 		m_manuv[0] = MANUV_DP;
 		m_manuv[1] = MANUV_DP;
@@ -979,6 +1020,7 @@ public:
 	 	m_pilotTraining = 0;
 	 	m_pilotExperience = 0;
 		m_maxDiveSpeed = MAX_INT;
+		mp_plotNodeLeaves = NULL;
 	};
 
 	Aircraft::Aircraft(Aircraft &src)
@@ -992,6 +1034,7 @@ public:
 		m_pilotTraining = src.m_pilotTraining;
 		m_pilotExperience = src.m_pilotExperience;
 	 	m_maxDiveSpeed = src.m_maxDiveSpeed;
+		mp_plotNodeLeafLink = NULL;
 		// ---------- public member variables ----------
 		m_id = src.m_id;
 		mAircraftModel = src.mAircraftModel;
@@ -1037,8 +1080,21 @@ public:
 			(*itr).reset();
 		}
 		m_logs.clear();
-	}
+		
+		plotNode	*p_me = mp_plotNodeLeaves;
+		plotNode	*p_next = NULL;
+		while (p_me != NULL) {
+			p_next = p_me->p_plotLeaf; 
+			if (p_me->p_plotForm != NULL) {
+				delete p_me->p_plotForm;
+			}
+			delete p_me;
+			p_me = p_next;
+		}
+		
 
+	}
+	void appendPlotNodeLeaves_(plotNode *p_plotNode);
 	BOOL Aircraft::HitTest(float x, float y);
 
 	HRESULT Aircraft::Draw(
