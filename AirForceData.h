@@ -899,7 +899,110 @@ aircraftModel aircraftModels[]
 		3,
 		// fireAccuracy
 		2,
-	}
+	},
+	{	6,
+		GERMAN,
+		L"V1",
+		L"bitmapFiles\\v1.png",
+		L"bitmapFiles\\v1.png",
+		{4.0, -0.1},
+		{
+			//   0,    1,    2,    3,    4,    5,    6,    7,    8,   9,   10
+			//   not Loaded
+			{
+			{ STAL, STAL, STAL, STAL, STAL, STAL, STAL, MANV, MANV, MANV, NA}, //4.0
+			},
+			//   Loaded
+			{
+			{ STAL, STAL, STAL, STAL, STAL, STAL, STAL, MANV, MANV, MANV, NA}, //4.0
+			}
+		},
+		//Maneuverability Requirements Table
+		//						loaded	loaded	loaded	loaded	loaded
+		//	turn,  	bank, 	slip, 	roll, 	loop, 	turn, 	bank, 	slip, 	roll, 	loop
+		{
+			//Maneuver Speed
+			{
+			{-1,	-1,	-1, 	-1,	-1,	-1,	-1,	-1,	-1,	-1}, //4.9	
+			},
+			//Level Speed
+			{
+			{-1,	-1,	-1, 	-1,	-1,	-1,	-1,	-1,	-1,	-1}, //4.9	
+			},
+			//Dive Speed
+			{
+			{-1,	-1,	-1, 	-1,	-1,	-1,	-1,	-1,	-1,	-1}, //4.9	
+			}
+		},
+		//Altitude Change Table Climb
+		//	0,	-1,	-2,	-3,	-4,	-5, 	-6,	-7, 	-8,	-9
+		{
+			//Maneuver Speed
+			{
+			{-1,	-1, 	-1,	-1,	-1,	-1,	-1,	-1,	-1,	-1},//4.9	
+			},
+			//Level Speed
+			{
+			{-1,	-1, 	-1,	-1,	-1,	-1,	-1,	-1,	-1,	-1},//4.9	
+			},
+			//Dive Speed
+			{
+			{-1,	-1, 	-1,	-1,	-1,	-1,	-1,	-1,	-1,	-1},//4.9	
+			}
+		},
+		//Altitude Change Table Dive
+		//	0,	+1,	+2,	+3,	+4,	+5, 	+6,	+7, 	+8,	+9
+		{
+			{-1,	-1, 	-1,	-1,	-1,	-1,	-1,	-1,	-1,	-1},//4.9	
+		},
+		//Speed Change Table
+		//	4.9,	9.9,	14.9,	19.9,	24.0, 	
+		{
+			{0,	0,	0,	0,	0,	0}, //Power
+			{0,	0,	0,	0,	0,	0}  //Break
+		},
+		//Damage Tolerance
+		{
+			2, //Wing
+			2, //Fuselage
+			{-1, -1}, // Cockpit
+			{2, -1, -1, -1}, // Engines
+			{-1, -1, -1, -1, -1, -1,  -1,  -1}, // Guns
+			1 // Fule Tank
+		},
+		// Ammo Payload
+		{
+			-1,
+			-1,
+		},
+		// gunType
+		{
+			gT_Non,	gT_Non,	gT_Non,	gT_Non,	gT_Non,	gT_Non,	gT_Non,	gT_Non
+		},
+		// gunPosition
+		{
+			gP_Non,	gP_Non,	gP_Non,	gP_Non,	gP_Non,	gP_Non, gP_Non,	gP_Non
+		},
+		// gunRange
+		{
+			-1,	-1,	-1,	-1,	-1,	-1,	-1,	-1
+		},
+		// gunPower
+		{
+			0, 	0,	0, 	0, 	0, 	0, 	0, 	0
+		},
+		// fgunPower
+		{
+			{0,	0, 	0,	0,	0,	0}, // Low 2, 4, 6, 8, 10, 12 o'clock
+			{0,	0, 	0,	0,	0,	0}, // Med 2, 4, 6, 8, 10, 12 o'clock
+			{0,	0, 	0,	0,	0,	0}, // Hih 2, 4, 6, 8, 10, 12 o'clock
+			{0,	0, 	0,	0,	0,	0}  // above, below, na, na, na, na
+		},
+		// silhouette
+		-4,
+		// fireAccuracy
+		0,
+	},
 };
 
 
