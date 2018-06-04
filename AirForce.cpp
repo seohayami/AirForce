@@ -1938,10 +1938,52 @@ void Aircraft::clearPlotTree()
 	}
 }
 
+manuType convertManuvToManuType(int manuv)
+{
+	switch (manuv) {
+		case MANUV_NP:
+			break;
+		case MANUV_TL:
+			return ManuvTL;
+		case MANUV_TR:
+			return ManuvTR;
+		case MANUV_BL:
+			return ManuvBL;
+		case MANUV_BR:
+			return ManuvBR;
+		case MANUV_SL:
+			return ManuvSL;
+		case MANUV_SR:
+			return ManuvSR;
+		case MANUV_RL:
+			return ManuvRL;
+		case MANUV_RR:
+			return ManuvRR;
+		case MANUV_LC:
+			return ManuvLC;
+		case MANUV_LD:
+			return ManuvLD;
+		case MANUV_PW:
+			return ManuvPW;
+		case MANUV_BK:
+			return ManuvBK;
+		case MANUV_DB:
+			return ManuvDB;
+		case MANUV_FR:
+			return ManuvFR;
+		case MANUV_FG:
+			return ManuvFG;
+		case MANUV_FW1:
+			return ManuvFW1;
+	}
+}
+
 void Aircraft::createPlotBranchRecursively_(plotNode *p_node, cmdForm form, int mp, int manu) 
 {
-	cmdForm	f = form;
-	int	m = mp;
+	cmdForm		f = form;
+	int		m = mp;
+	manuType	manuT;	
+
 	this->getManuvable_(form, &form, true);
 	pf_parseManuv[manu](&form, &mp);
 	modifyManeuverableByParsedManuv(&form);
@@ -4315,6 +4357,8 @@ void parseManuvMoveFwdOneHex(cmdForm *p_form, int *p_mp)
 			);
 			break;
 
+	appendManuvToFormManuv(p_form, MANUV_FW1);
+
 	}
 }
 
@@ -4326,7 +4370,13 @@ void parseManuvMoveFwd(cmdForm *p_form, int *p_mp, int fwd)
 	for (i = 0; i < fwd; i++) {
 		parseManuvMoveFwdOneHex(p_form, p_mp);
 	}
-	appendManuvToFormManuv(p_form, fwd);
+//	appendManuvToFormManuv(p_form, fwd);
+// PITFALL 180604:
+// 	parseManuvXXX is also used as function pointer pf_parseManuv[].
+// 	its argument is (cmdForm *p_form , int *p_mp), therefore it doesnt 
+// 	match parseManuvMoveFwd() whose argument is (cmdForm *p_form, int *p_mp, int fwd).
+// 	So parseManuvMoveFwdOneHex() is used for pf_parseManuv[] instead.
+//
 
 }
 

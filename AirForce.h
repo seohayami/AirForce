@@ -226,6 +226,7 @@ enum attackSide {
 #define NOSE_LV		1
 #define NOSE_DN		2
 
+#define	MANUV_FW1 	 1	//Forward One Hex
 #define	MANUV_NP 	 0	//Nop
 #define	MANUV_TL	-1	//Turn Left
 #define	MANUV_TR	-2  	//Turn Right
@@ -552,7 +553,7 @@ enum manuType {
 	ManuvDB,
 	ManuvFR,
 	ManuvFG,
-	ManuvFW,
+	ManuvFW1,
 };
 void (* const pf_parseManuv[])(cmdForm *p_form, int *p_mp) = {
 	parseManuvTL,
