@@ -822,7 +822,7 @@ spdIncTblEntry Aircraft::referSpeedIncTbl_(cmdForm form, bool formMode)
 
 float Aircraft::GetMaxAltChgClimb(int spdIncIndex)
 {
-	cmdForm	fDummy;
+	cmdForm	fDummy{};	// initialized to zeros
 	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 	int i;
 	float maxClimb = 0.0f;
@@ -838,7 +838,7 @@ float Aircraft::GetMaxAltChgClimb(int spdIncIndex)
 
 float Aircraft::GetMaxAltChgDive(int spdIncIndex)
 {
-	cmdForm	fDummy;
+	cmdForm	fDummy{};	// initialized to zeros
 	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 	int i;
 	float maxDive = 0.0f;
@@ -854,7 +854,7 @@ float Aircraft::GetMaxAltChgDive(int spdIncIndex)
 
 int Aircraft::GetMaxPower()
 {
-	cmdForm	fDummy;
+	cmdForm	fDummy{};	// initialized to zeros
 	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 
 	return aircraftModels[mAircraftModel].speedChgTbl[0][altTblIndex];
@@ -862,7 +862,7 @@ int Aircraft::GetMaxPower()
 
 int Aircraft::GetMaxBreak()
 {
-	cmdForm	fDummy;
+	cmdForm	fDummy{};
 	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 
 	return aircraftModels[mAircraftModel].speedChgTbl[1][altTblIndex];
@@ -870,7 +870,7 @@ int Aircraft::GetMaxBreak()
 
 int Aircraft::GetMaxDiveSpeed()
 {
-	cmdForm	fDummy;
+	cmdForm	fDummy{};
 	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 
 	int i;
@@ -1188,7 +1188,7 @@ int Aircraft::getMP()
 
 maneuverable Aircraft::ReferManuvReqTblSpdInc_(int spdIncIndex, cmdForm f, bool formMode)
 {
-	cmdForm	fDummy;
+	cmdForm	fDummy{};
 	int altTblIndex = this->getAltTblIndex_(fDummy, false);
 	maneuverable	rtn;
 	int loaded;
@@ -1772,7 +1772,12 @@ void Aircraft::copyAcToForm(cmdForm *p_form)
 // 	command and playerID is NOT copied.
 // 	caller of this function must set these values.
 //
-	cmdForm		fDummy;
+	cmdForm		fDummy{};	// initialize to zeros
+// PITFALL 180602: without initialization of fDummy,
+// 	run time error occurs, saying struct is being used without initialization
+// 	therefore initialization of struct is required even if 
+// 	the struct is never read.
+//
 
 	if (p_form == NULL) {
 		return;
@@ -1878,6 +1883,7 @@ void Aircraft::getManuvable_(
 		p_rtn->manuvable.rollLeft = manuv.rollLeft;
 		p_rtn->manuvable.rollRight = manuv.rollRight;
 		p_rtn->manuvable.loopClimb = manuv.loopClimb;
+		p_rtn->manuvable.loopDive = manuv.loopDive;
 		p_rtn->manuvable.maxClimb = manuv.maxClimb;
 		p_rtn->manuvable.maxDive = manuv.maxDive;
 // In "formMode", appliable Power/Break factors are stored in the form.
@@ -1932,12 +1938,45 @@ void Aircraft::clearPlotTree()
 	}
 }
 
+void Aircraft::createPlotBranchRecursively_(plotNode *p_node, cmdForm form, int mp, int manu) 
+{
+	cmdForm	f = form;
+	int	m = mp;
+	this->getManuvable_(form, &form, true);
+	pf_parseManuv[manu](&form, &mp);
+	modifyManeuverableByParsedManuv(&form);
+	
+	plotNode	*p_new(new plotNode);
+	p_new->manuv = manu;
+	p_new->evaPt = 0;
+	p_new->remainingMP = mp;
+	p_new->p_parent = p_node;
+	p_new->p_plotLeaf = NULL;
+	p_new->p_plotForm = NULL;	// temp. assignment
+
+	if (mp == 0) {
+		cmdForm	*p_f(new cmdForm);
+		(*p_f) = f;
+		p_new->p_plotForm = p_f;
+		this->appendPlotNodeLeaves_(p_new);
+	} else {
+		p_new->p_plotForm = NULL;
+	}
+	(p_node->p_plotNodes).push_front(p_new);
+
+	createPlotBranches_(p_new, form, mp, turnCnt);
+}
+
 int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int turnCnt)
 {
+// Input:
+// 	turnCnt: plotTree is created for this number of Game Turns
+// Output:
+// 	total number of PlotTree Leaves
+//
+
 	static int	plotNodeCnt = 0;
-//	int	plotNodeCnt = 0;
 	static int	plotNodeZeroMP = 0;
-//	int	plotNodeZeroMP = 0;
 
 	plotNodeCnt ++;
 	if (mp == 0) {
@@ -1947,58 +1986,60 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 	if (mp <= 0) {
 		if (form.manuvable.maxPower > 0) {
 			if (p_node->manuv != MANUV_BK) {
-				cmdForm	f = form;
-				int	m = mp;
-				this->getManuvable_(f, &f, true);
-				parseManuvPW(&f, &mp);
-				modifyManeuverableByParsedManuv(&f);
-				
-				plotNode	*p_new(new plotNode);
-				p_new->manuv = MANUV_PW;
-				p_new->evaPt = 0;
-				p_new->remainingMP = mp;
-				p_new->p_parent = p_node;
-				(p_node->p_plotNodes).push_front(p_new);
-		
-				createPlotBranches_(p_new, f, mp, turnCnt);
-			}
+				createPlotBranchRecursively_(p_node, form, mp, MANUV_PW);
+//				cmdForm	f = form;
+//				int	m = mp;
+//				this->getManuvable_(f, &f, true);
+//				parseManuvPW(&f, &mp);
+//				modifyManeuverableByParsedManuv(&f);
+//				
+//				plotNode	*p_new(new plotNode);
+//				p_new->manuv = MANUV_PW;
+//				p_new->evaPt = 0;
+//				p_new->remainingMP = mp;
+//				p_new->p_parent = p_node;
+//				(p_node->p_plotNodes).push_front(p_new);
+//		
+//				createPlotBranches_(p_new, f, mp, turnCnt);
+//			}
 		}
 		if (form.manuvable.maxBreak > 0) {
 			if (p_node->manuv != MANUV_PW) {
-				cmdForm	f = form;
-				int	m = mp;
-				this->getManuvable_(form, &form, true);
-//				parseManuvBK(&form, &mp);
-				pf_parseManuv[ManuvBK](&form, &mp);
-				modifyManeuverableByParsedManuv(&form);
-				
-				plotNode	*p_new(new plotNode);
-				p_new->manuv = MANUV_BK;
-				p_new->evaPt = 0;
-				p_new->remainingMP = mp;
-				p_new->p_parent = p_node;
-				p_new->p_plotLeaf = NULL;
-				p_new->p_plotForm = NULL;	// temp. assignment
-
-				if (mp == 0) {
-					cmdForm	*p_f(new cmdForm);
-					(*p_f) = f;
-					p_new->p_plotForm = p_f;
-					this->appendPlotNodeLeaves_(p_new);
-				} else {
-					p_new->p_plotForm = NULL;
-				}
-				(p_node->p_plotNodes).push_front(p_new);
-		
-				createPlotBranches_(p_new, form, mp, turnCnt);
-			}
+				createPlotBranchRecursively_(p_node, form, mp, MANUV_BK);
+//				cmdForm	f = form;
+//				int	m = mp;
+//				this->getManuvable_(form, &form, true);
+////				parseManuvBK(&form, &mp);
+//				pf_parseManuv[ManuvBK](&form, &mp);
+//				modifyManeuverableByParsedManuv(&form);
+//				
+//				plotNode	*p_new(new plotNode);
+//				p_new->manuv = MANUV_BK;
+//				p_new->evaPt = 0;
+//				p_new->remainingMP = mp;
+//				p_new->p_parent = p_node;
+//				p_new->p_plotLeaf = NULL;
+//				p_new->p_plotForm = NULL;	// temp. assignment
+//
+//				if (mp == 0) {
+//					cmdForm	*p_f(new cmdForm);
+//					(*p_f) = f;
+//					p_new->p_plotForm = p_f;
+//					this->appendPlotNodeLeaves_(p_new);
+//				} else {
+//					p_new->p_plotForm = NULL;
+//				}
+//				(p_node->p_plotNodes).push_front(p_new);
+//		
+//				createPlotBranches_(p_new, form, mp, turnCnt);
+//			}
 		}
 
 		if (form.manuvable.maxPower <= 0) {
 			if (turnCnt >1) {
 				form.speedInit = form.speed;
 				form.altInit = form.alt;
-				createPlotBranches_(p_new, form, form.speed, turnCnt-1);
+				createPlotBranches_(p_node, form, form.speed, turnCnt-1);
 			} else {
 				return plotNodeZeroMP;
 			}
@@ -2007,189 +2048,199 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 			if (turnCnt >1) {
 				form.speedInit = form.speed;
 				form.altInit = form.alt;
-				createPlotBranches_(p_new, form, form.speed, turnCnt-1);
+				createPlotBranches_(p_node, form, form.speed, turnCnt-1);
 			} else {
 				return plotNodeZeroMP;
 			}
 		}
 
 	} else { // mp > 0
-
 		if (form.manuvable.turnLeft == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvTL(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_TL;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_TL);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvTL(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_TL;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.turnRight == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvTR(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_TR;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_TR);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvTR(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_TR;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.bankLeft == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvBL(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_BL;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-				createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_BL);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvBL(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_BL;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//				createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.bankRight == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvBR(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_BR;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_BR);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvBR(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_BR;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.slipLeft == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvSL(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-		
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_SL;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_SL);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvSL(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//		
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_SL;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.slipRight == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvSR(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_SR;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_SR);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvSR(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_SR;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.rollLeft == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvRL(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_RL;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_RL);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvRL(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_RL;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.rollRight == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvRR(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_RR;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_RR);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvRR(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_RR;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.loopClimb == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvLC(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_LC;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_LC);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvLC(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_LC;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.loopDive == 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvLD(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = MANUV_LD;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_LD);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvLD(&f, &m);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = MANUV_LD;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (mp > 0) {
-			cmdForm	f = form;
-			int	m = mp;
-			this->getManuvable_(f, &f, true);
-			parseManuvMoveFwdOneHex(&f, &m);
-			modifyManeuverableByParsedManuv(&f);
-			
-			plotNode	*p_new(new plotNode);
-			p_new->manuv = 1;
-			p_new->evaPt = 0;
-			p_new->remainingMP = m;
-			p_new->p_parent = p_node;
-			(p_node->p_plotNodes).push_front(p_new);
-	
-			createPlotBranches_(p_new, f, m, turnCnt);
+			createPlotBranchRecursively_(p_node, form, mp, 1);
+//			cmdForm	f = form;
+//			int	m = mp;
+//			this->getManuvable_(f, &f, true);
+//			parseManuvMoveFwd(&f, &m, 1);
+//			modifyManeuverableByParsedManuv(&f);
+//			
+//			plotNode	*p_new(new plotNode);
+//			p_new->manuv = 1;
+//			p_new->evaPt = 0;
+//			p_new->remainingMP = m;
+//			p_new->p_parent = p_node;
+//			(p_node->p_plotNodes).push_front(p_new);
+//	
+//			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 	}
 }
@@ -3992,8 +4043,17 @@ void appendManuvToFormManuv(cmdForm *p_form, int manu)
 
 	for (i = 0; p_form->manuv[i] != MANUV_EN; i++) {
 	}
+	
+	if ((0 < manu) && (manu < 20)) { 	// straight maneuver
+		if ((0 <manuv[i-1]) && (manuv[i-1] < 20)) {	// straight maneuver
+			manuv[i-1] += manu;
+			return;
+	}
+
 	p_form->manuv[i] = manu;
 	p_form->manuv[i + 1] = MANUV_EN;
+
+	return;
 }
 
 //void MapAirForce::parseManuvTL(cmdForm *p_form, int *p_mp)
@@ -7450,27 +7510,33 @@ void modifyManeuverableByParsedManuv(cmdForm *form)
 	switch (form->bank) {
 		case BANK_IR:
 			(form->manuvable).turnLeft = -1;
+			(form->manuvable).loopClimb = -1;
 			break;
 		case BANK_BR:
 			(form->manuvable).turnLeft = -1;
+			(form->manuvable).loopDive = -1;
 			break;
 		case BANK_LV:
 			(form->manuvable).turnLeft = -1;
 			(form->manuvable).turnRight = -1;
 			(form->manuvable).slipLeft = -1;
 			(form->manuvable).slipRight = -1;
+			(form->manuvable).loopDive = -1;
 			break;
 		case BANK_BL:
 			(form->manuvable).turnRight = -1;
+			(form->manuvable).loopDive = -1;
 			break;
 		case BANK_IL:
 			(form->manuvable).turnRight = -1;
+			(form->manuvable).loopClimb = -1;
 			break;
 		case BANK_IV:
 			(form->manuvable).turnLeft = -1;
 			(form->manuvable).turnRight = -1;
 			(form->manuvable).slipLeft = -1;
 			(form->manuvable).slipRight = -1;
+			(form->manuvable).loopClimb = -1;
 			break;
 		default:
 			break;

@@ -488,7 +488,7 @@ struct chunkTab{
 struct plotNode {
 	int			manuv;
 	int			evaPt;
-	int			remainingMP;
+	int			remainingMP;	//mp after plotNode.manuv
 	list<plotNode *>	p_plotNodes;
 	plotNode		*p_parent;
 	plotNode		*p_plotLeaf;
@@ -563,7 +563,7 @@ void (* const pf_parseManuv[])(cmdForm *p_form, int *p_mp) = {
 	parseManuvSR,
 	parseManuvRL,
 	parseManuvRR,
-	parseManvuLC,
+	parseManuvLC,
 	parseManuvLD,
 	parseManuvPW,
 	parseManuvBK,
@@ -890,7 +890,7 @@ protected:
 	HRESULT catGunStatToStr(wchar_t *a_str, int index);
 	HRESULT makeStrDamageGun(wchar_t *a_str);
 
-	int GetAltTblIndex();
+	int getAltTblIndex_(cmdForm form, bool formMode);
 	float GetMaxAltChgClimb(int spdIncIndex);
 	float GetMaxAltChgDive(int spdIncIndex);
 	int GetMaxPower();
@@ -923,6 +923,7 @@ protected:
 	void ModifyGunPowerByDamage(gunPower *p_gunPower);
 	void copyPrevManuvToForm_(cmdForm *p_rtn);
 	void clearPlotTree();
+	void createPlotBranchRecursively_(plotNode *p_node, cmdForm form, int mp, int manu);
 	int createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int turnCnt);
 	void createPlotTreeRoot_();
 
@@ -1034,7 +1035,7 @@ public:
 		m_pilotTraining = src.m_pilotTraining;
 		m_pilotExperience = src.m_pilotExperience;
 	 	m_maxDiveSpeed = src.m_maxDiveSpeed;
-		mp_plotNodeLeafLink = NULL;
+		mp_plotNodeLeaves = NULL;
 		// ---------- public member variables ----------
 		m_id = src.m_id;
 		mAircraftModel = src.mAircraftModel;
