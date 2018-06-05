@@ -10040,7 +10040,7 @@ void GameAirForce::createSpotTbl_()
 
 	spotEntry a_spotTbl = new spotEntry[cntACsPlayer0][cntACsPlayer1];
 
-	//-------- allocate mem for spotTbl --------
+	//-------- fill in modifier in spotTbl --------
 	for (i =0; i < cntACsPlayer0; i++) {
 		for (j = 0; j < cntACsPlayer1; j++) {
 			a_spotTbl[i][j].modifier 
