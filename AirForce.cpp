@@ -25,6 +25,8 @@
 #include <wincodecsdk.h>
 #include <Objbase.h>
 
+#include <vector>
+
 #include <Commctrl.h>
 #pragma comment(lib, "Comctl32")
 
@@ -980,11 +982,19 @@ void getPrevTwoManuvFormMode(int *last, int *secondLast, cmdForm f)
 			// straight move
 			if ((*last >= 0) && (*last < 20)) {
 				// last is straight move
-				*last += f.manuv[i];
+				if (*last + f.manuv[i] < 20) {
+					*last += f.manuv[i];
+				} else {
+		        		*secondLast = *last;	
+					*last = f.manuv[i];
+				}
 			} else {
 		        	*secondLast = *last;	
 				*last = f.manuv[i];
 			}
+		}
+		if (*secondLast != MANUV_EN) {
+			return;
 		}
 	}
 	if (*secondLast == MANUV_EN) { // need to go back to log data of previous GameTurns
@@ -1978,14 +1988,14 @@ manuType convertManuvToManuType(int manuv)
 	}
 }
 
-void Aircraft::createPlotBranchRecursively_(plotNode *p_node, cmdForm form, int mp, int manu) 
+void Aircraft::createPlotBranchRecursively_(plotNode *p_node, cmdForm form, int mp, int manu, int turnCnt) 
 {
 	cmdForm		f = form;
 	int		m = mp;
-	manuType	manuT;	
+	manuType	manuT = convertManuvToManuType(manu);	
 
 	this->getManuvable_(form, &form, true);
-	pf_parseManuv[manu](&form, &mp);
+	pf_parseManuv[manuT](&form, &mp);
 	modifyManeuverableByParsedManuv(&form);
 	
 	plotNode	*p_new(new plotNode);
@@ -2028,7 +2038,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 	if (mp <= 0) {
 		if (form.manuvable.maxPower > 0) {
 			if (p_node->manuv != MANUV_BK) {
-				createPlotBranchRecursively_(p_node, form, mp, MANUV_PW);
+				createPlotBranchRecursively_(p_node, form, mp, MANUV_PW, turnCnt);
 //				cmdForm	f = form;
 //				int	m = mp;
 //				this->getManuvable_(f, &f, true);
@@ -2043,11 +2053,11 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //				(p_node->p_plotNodes).push_front(p_new);
 //		
 //				createPlotBranches_(p_new, f, mp, turnCnt);
-//			}
+			}
 		}
 		if (form.manuvable.maxBreak > 0) {
 			if (p_node->manuv != MANUV_PW) {
-				createPlotBranchRecursively_(p_node, form, mp, MANUV_BK);
+				createPlotBranchRecursively_(p_node, form, mp, MANUV_BK, turnCnt);
 //				cmdForm	f = form;
 //				int	m = mp;
 //				this->getManuvable_(form, &form, true);
@@ -2074,7 +2084,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //				(p_node->p_plotNodes).push_front(p_new);
 //		
 //				createPlotBranches_(p_new, form, mp, turnCnt);
-//			}
+			}
 		}
 
 		if (form.manuvable.maxPower <= 0) {
@@ -2098,7 +2108,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 
 	} else { // mp > 0
 		if (form.manuvable.turnLeft == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_TL);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_TL, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2115,7 +2125,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.turnRight == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_TR);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_TR, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2132,7 +2142,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.bankLeft == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_BL);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_BL, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2149,7 +2159,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //				createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.bankRight == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_BR);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_BR, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2166,7 +2176,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.slipLeft == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_SL);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_SL, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2183,7 +2193,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.slipRight == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_SR);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_SR, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2200,7 +2210,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.rollLeft == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_RL);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_RL, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2217,7 +2227,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.rollRight == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_RR);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_RR, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2234,7 +2244,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.loopClimb == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_LC);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_LC, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2251,7 +2261,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (form.manuvable.loopDive == 0) {
-			createPlotBranchRecursively_(p_node, form, mp, MANUV_LD);
+			createPlotBranchRecursively_(p_node, form, mp, MANUV_LD, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2268,7 +2278,7 @@ int Aircraft::createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int tu
 //			createPlotBranches_(p_new, f, m, turnCnt);
 		}
 		if (mp > 0) {
-			createPlotBranchRecursively_(p_node, form, mp, 1);
+			createPlotBranchRecursively_(p_node, form, mp, 1, turnCnt);
 //			cmdForm	f = form;
 //			int	m = mp;
 //			this->getManuvable_(f, &f, true);
@@ -2307,9 +2317,6 @@ void Aircraft::createPlotTreeRoot_()
 
 	int remainingMP =  parseManuv(&rtn);
 	modifyManeuverableByParsedManuv(&rtn);
-// under construction: need to create plot tree
-//      also need to call parseManuv() and modifyManuvableByParsedManuv()
-//
 
 	int	plotSize;
 	plotSize = createPlotBranches_(p_new, rtn, remainingMP, turnCnt);
@@ -2336,6 +2343,13 @@ void Aircraft::createPlotTree_()
 //	PlayerAirForce.cpp
 //
 //////////////////////////////////////////////////////////////////////////////
+
+int PlayerAirForce::getAircraftCnt_()
+{
+	int	cnt = mAircrafts.size();
+
+	return	cnt;
+}
 
 void PlayerAirForce::cmdToPlayerSetAcstat(cmdForm form, cmdForm *p_rtn)
 {
@@ -4087,9 +4101,10 @@ void appendManuvToFormManuv(cmdForm *p_form, int manu)
 	}
 	
 	if ((0 < manu) && (manu < 20)) { 	// straight maneuver
-		if ((0 <manuv[i-1]) && (manuv[i-1] < 20)) {	// straight maneuver
-			manuv[i-1] += manu;
+		if ((0 <p_form->manuv[i-1]) && (p_form->manuv[i-1] < 20)) {	// straight maneuver
+			p_form->manuv[i-1] += manu;
 			return;
+		}
 	}
 
 	p_form->manuv[i] = manu;
@@ -4552,7 +4567,8 @@ int parseManuv(cmdForm *p_form)
 	return mp;
 }
 
-int MapAirForce::getDistanceHex(cmdForm formS, cmdForm formD)
+//int MapAirForce::getDistanceHex(cmdForm formS, cmdForm formD)
+int getDistanceHex(cmdForm formS, cmdForm formD)
 {
 	int deltaX = abs(formS.virCorX - formD.virCorX);
 	int deltaY = abs(formS.virCorY - formD.virCorY);
@@ -4577,7 +4593,8 @@ int MapAirForce::getDistanceHex(cmdForm formS, cmdForm formD)
 	return step;
 }
 
-int MapAirForce::getClock(cmdForm formS, cmdForm formD)
+//int MapAirForce::getClock(cmdForm formS, cmdForm formD)
+int getClock(cmdForm formS, cmdForm formD)
 {
 // return 	2, 4, 6, 8, 10, 12 oclock
 // 		14 if above
@@ -9859,6 +9876,193 @@ void GameAirForce::onEnterGameModeFire()
 	}
 }
 
+void GameAirForce::getAllACs_(cmdForm a_form[][MAX_AC_CNT + 1])
+{
+	list<shared_ptr<PlayerAirForce>>::iterator itrBackup = mItrSelectedPlayer;
+	list<shared_ptr<PlayerAirForce>>::iterator itr;
+
+	for (itr = mPlayers.begin(); itr != mPlayers.end(); itr++) {
+		this->mItrSelectedPlayer = itr;
+
+		cmdForm f;
+		f.command = GET_AC;
+		f.playerID = SELECTED_PLAYER;
+		f.selectedAircraft = ALL_AC;
+		cmdToGame(GET_AC, form, a_form[i]);
+		i++;
+	}
+	mItrSelectedPlayer = itrBackup;
+}
+
+int getACsCntFromForms(cmdForm a_form[])
+{
+	int	i = 0;
+
+	while (a_form[i].command != TAIL) {
+		i++;
+	}
+	return i;
+}
+
+int getHighMidLow(cmdForm formA, cmdForm formT)
+{
+// Return: target's position from attacker's perspective
+// 	 2 = High
+// 	 1 = Mid.
+// 	 0 = Low
+//
+	int	distV = (int) (formT.alt - formA.alt);
+	if (500 <= distV) {
+		return  TARGET_HIGH;
+	}
+	if (distV <= -500) {
+		return  TARGET_LOW;
+	}
+	return TARGET_MID;
+}
+
+int referSpotModifierTbl(cmdForm formA, cmdForm formT)
+{
+// Return:
+// 	refer the Spot Modifier Table of the attacker Aircraft Model
+// 	and returns the modifier value.
+//
+	int	distH = getDistanceHex(formA, formT);
+	int	clockAtoT = getClock(formA, formT);
+	int	highlow = getHighMidLow(formA, formT)
+	if (distH == 0) {
+		if (formT.alt - formA.alt >= 0) {
+			return aircraftModels[formA.aircraftModel].spotModifier[3][0];
+		} else {
+			return aircraftModels[formA.aircraftModel].spotModifier[3][1];
+		}
+	} else {
+		int i = (clockAtoT - 2) / 2;
+		return aircraftModels[formA.aircraftModel].spotModifier[highlow][clockAtoT];
+	}
+}
+
+int GameAirForce::getSpotModifier_(cmdForm formA, cmdForm formT) 
+{
+	int	modifier = 0;
+	int	distH = getDistanceHex(formA, formT);
+	int	distV = (int) (abs(formA.alt - formT.alt) / 500.0f);
+	int	clockAtoT = getClock(formA, formT);
+
+	if (m_gameTime == GAMETIME_NIGHT) {
+		modifier -= 3;
+	}
+	if (aircraftModels[formA.aircraftModel].withRadar) {
+		if ((distH + distV <= 15) 
+		&&  (clockAtoT == 12)) {
+			modifier += 2;
+		}
+	}
+	modifier += referSpotModifierTbl(formA, formT);
+	if (formA.pilotModel == 2) {	// pilot == Ace
+		modifier += 2;
+	}
+	switch (formA.bank) {
+		case BANK_IR:
+		case BANK_IL:
+		case BANK_IV:
+			modifier -= 2;
+			break;
+		case BANK_BR:
+			if ((clockAtoT == 2) 
+			||  (clockAtoT == 4)) {
+				modifier += 1;
+			}
+			if ((clockAtoT == 8) 
+			||  (clockAtoT == 10)) {
+				modifier -= 1;
+			}
+			break;
+		case BANK_BL:
+			if ((clockAtoT == 2) 
+			||  (clockAtoT == 4)) {
+				modifier -= 1;
+			}
+			if ((clockAtoT == 8) 
+			||  (clockAtoT == 10)) {
+				modifier += 1;
+			}
+			break;
+		default:
+			break;
+	}
+	if (distH + distV <= 10) {
+		modifier += 1;
+	}
+	return modifier;
+}
+
+void GameAirForce::createSpotTbl_()
+{
+	//-------- check prerequisite --------
+	int	cntPlayers = (this->mPlayers).size();
+
+	if (2 < cntPlayers) {	// return if 3 players or more
+		MessageBox(NULL, 
+  			L"Error: createSpotTbl_: more than 2 players Not Supported.\n",
+			NULL,
+			MB_OK | MB_ICONSTOP
+		);
+		return;
+	}
+	if (cntPlayers < 2) {	// do nothing if only 1 player
+		return;
+	}
+
+	int	i = 0;
+	int	j = 0;
+
+	//-------- get ACs' info  --------
+	cmdForm a_form[MAX_PLAYER_CNT][MAX_AC_CNT +1];
+
+	for (i = 0; i < MAX_PLAYER_CNT; i++) {	// initialize array of forms
+		a_form[i][0].command = TAIL;
+	}
+	this->getAllACs_(a_form);
+
+	int	cntACsPlayer0 = getACsCntFromForms(a_form[0]);
+	int	cntACsPlayer1 = getACsCntFromForms(a_form[1]);
+	if ((cntACsPlayer0 == 0) || (cntACsPlayer1 == 0)) {
+		return;		// do nothing if no aircrafts
+	}
+
+	//-------- allocate mem for spotTbl --------
+//	vector<vector<spotEntry>> vv_spotTbl;
+//	vv_spotTbl = vector<vector<spotEntry>>
+//		(cntACsPlayer0, 
+//		 vector<spotEntry>(cntACsPlayer1)
+//		);
+
+	spotEntry a_spotTbl = new spotEntry[cntACsPlayer0][cntACsPlayer1];
+
+	//-------- allocate mem for spotTbl --------
+	for (i =0; i < cntACsPlayer0; i++) {
+		for (j = 0; j < cntACsPlayer1; j++) {
+			a_spotTbl[i][j].modifier 
+				= getSpotModifier(a_form[0][i], a_form[1][j]);
+			a_spotTbl[i][j].evaPt 
+				= getDistanceHex(a_form[0][i], a_form[1][j])
+				+ (int) (abs(
+					a_form[0][i].alt - a_form[1][j].alt
+					     ) / 500.0f
+					);
+		}
+	}
+
+	delete[][] a_spotTbl;
+}
+
+
+void GameAirForce::onEnterGameModeSpot_()
+{
+	createSpotTbl_();
+}
+
 void GameAirForce::onEnterGameModePlot()
 {
 	cmdForm f;
@@ -9888,6 +10092,7 @@ void GameAirForce::OnButtonProceed()
 			break;
 		case GM_SPOT:
 			m_gameMode = GM_DET_ADV;
+			onEnterGameModeSpot();
 			break;
 		case GM_DET_ADV:
 			m_gameMode = GM_PLOT_MOVE;

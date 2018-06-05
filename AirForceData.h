@@ -155,10 +155,19 @@ aircraftModel aircraftModels[]
 			{0,	1, 	1,	1,	0,	0}, // Hih 2, 4, 6, 8, 10, 12 o'clock
 			{1,	0, 	0,	0,	0,	0}  // above, below, na, na, na, na
 		},
+		// spotModifier
+		{
+			{-1,	-1, 	-3,	-1,	-1,	1}, // Low 2, 4, 6, 8, 10, 12 o'clock
+			{ 1,	-1, 	-2,	-1,	 1,	2}, // Med 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	 0, 	-1,	 0,	 0,	1}, // Hih 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	-2, 	 0,	 0,	 0,	0}  // above, below, na, na, na, na
+		},
 		// silhouette
 		3,
 		// fireAccuracy
 		1,
+		// withRadar
+		false,
 	},
 	{	1,
 		GERMAN,
@@ -294,10 +303,19 @@ aircraftModel aircraftModels[]
 			{0,	2, 	2,	2,	0,	0}, // Hih 2, 4, 6, 8, 10, 12 o'clock
 			{2,	0, 	0,	0,	0,	0}  // above, below, na, na, na, na
 		},
+		// spotModifier
+		{
+			{-1,	-1, 	-3,	-1,	-1,	1}, // Low 2, 4, 6, 8, 10, 12 o'clock
+			{ 1,	-1, 	-2,	-1,	 1,	2}, // Med 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	 0, 	-1,	 0,	 0,	1}, // Hih 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	-2, 	 0,	 0,	 0,	0}  // above, below, na, na, na, na
+		},
 		// silhouette
 		3,
 		// fireAccuracy
 		1,
+		// withRadar
+		false,
 	},
 	{	2,
 		GERMAN,
@@ -442,10 +460,19 @@ aircraftModel aircraftModels[]
 			{0,	2, 	2,	2,	0,	0}, // Hih 2, 4, 6, 8, 10, 12 o'clock
 			{1,	0, 	0,	0,	0,	0}  // above, below, na, na, na, na
 		},
+		// spotModifier
+		{
+			{-1,	-1, 	-3,	-1,	-1,	1}, // Low 2, 4, 6, 8, 10, 12 o'clock
+			{ 1,	-1, 	-2,	-1,	 1,	2}, // Med 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	 0, 	-1,	 0,	 0,	1}, // Hih 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	-2, 	 0,	 0,	 0,	0}  // above, below, na, na, na, na
+		},
 		// silhouette
 		3,
 		// fireAccuracy
 		1,
+		// withRadar
+		false,
 	},
 	{	3,
 		BRITAIN,
@@ -599,10 +626,19 @@ aircraftModel aircraftModels[]
 			{0,	0, 	0,	0,	0,	0}, // Hih 2, 4, 6, 8, 10, 12 o'clock
 			{0,	0, 	0,	0,	0,	0}  // above, below, na, na, na, na
 		},
+		// spotModifier
+		{
+			{-1,	-1, 	-3,	-1,	-1,	1}, // Low 2, 4, 6, 8, 10, 12 o'clock
+			{ 1,	-1, 	-2,	-1,	 1,	2}, // Med 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	 0, 	-1,	 0,	 0,	1}, // Hih 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	-2, 	 0,	 0,	 0,	0}  // above, below, na, na, na, na
+		},
 		// silhouette
 		2,
 		// fireAccuracy
 		2,
+		// withRadar
+		false,
 	},
 	{	4,
 		BRITAIN,
@@ -747,10 +783,19 @@ aircraftModel aircraftModels[]
 			{0,	1, 	1,	1,	0,	0}, // Hih 2, 4, 6, 8, 10, 12 o'clock
 			{1,	0, 	0,	0,	0,	0}  // above, below, na, na, na, na
 		},
+		// spotModifier
+		{
+			{-1,	-1, 	-3,	-1,	-1,	1}, // Low 2, 4, 6, 8, 10, 12 o'clock
+			{ 1,	-1, 	-2,	-1,	 1,	2}, // Med 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	 0, 	-1,	 0,	 0,	1}, // Hih 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	-2, 	 0,	 0,	 0,	0}  // above, below, na, na, na, na
+		},
 		// silhouette
 		2,
 		// fireAccuracy
 		2,
+		// withRadar
+		false,
 	},
 	{	5,
 		USA,
@@ -895,10 +940,19 @@ aircraftModel aircraftModels[]
 			{0,	1, 	1,	1,	0,	0}, // Hih 2, 4, 6, 8, 10, 12 o'clock
 			{1,	0, 	0,	0,	0,	0}  // above, below, na, na, na, na
 		},
+		// spotModifier
+		{
+			{-1,	-1, 	-3,	-1,	-1,	1}, // Low 2, 4, 6, 8, 10, 12 o'clock
+			{ 1,	-1, 	-2,	-1,	 1,	2}, // Med 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	 0, 	-1,	 0,	 0,	1}, // Hih 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	-2, 	 0,	 0,	 0,	0}  // above, below, na, na, na, na
+		},
 		// silhouette
 		3,
 		// fireAccuracy
 		2,
+		// withRadar
+		false,
 	},
 	{	6,
 		GERMAN,
@@ -998,10 +1052,19 @@ aircraftModel aircraftModels[]
 			{0,	0, 	0,	0,	0,	0}, // Hih 2, 4, 6, 8, 10, 12 o'clock
 			{0,	0, 	0,	0,	0,	0}  // above, below, na, na, na, na
 		},
+		// spotModifier
+		{
+			{-1,	-1, 	-3,	-1,	-1,	1}, // Low 2, 4, 6, 8, 10, 12 o'clock
+			{ 1,	-1, 	-2,	-1,	 1,	2}, // Med 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	 0, 	-1,	 0,	 0,	1}, // Hih 2, 4, 6, 8, 10, 12 o'clock
+			{ 0,	-2, 	 0,	 0,	 0,	0}  // above, below, na, na, na, na
+		},
 		// silhouette
 		-4,
 		// fireAccuracy
 		0,
+		// withRadar
+		false,
 	},
 };
 

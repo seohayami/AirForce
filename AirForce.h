@@ -101,8 +101,13 @@ struct aircraftModel
 	                                // Med 2, 4, 6, 8, 10, 12 o'clock
 					// Hih 2, 4, 6, 8, 10, 12 o'clock
 					// above, below, na, na, na, na
+	int		spotModifier[4][6]; // Low 2, 4, 6, 8, 10, 12 o'clock
+	                                // Med 2, 4, 6, 8, 10, 12 o'clock
+					// Hih 2, 4, 6, 8, 10, 12 o'clock
+					// above, below, na, na, na, na
 	int		silhouette;
 	int		fireAccuracy;
+	bool		withRadar;
 };
 
 
@@ -252,6 +257,15 @@ enum attackSide {
 // 	is climb in feet
 // Negative Integer less than or equal to -20
 //  	is dive in feet
+
+#define GAMETIME_DAYTIME	1	// Day Time
+#define GAMETIME_NIGHT		2	// Night
+#define GAMETIME_MORNING	3	// Morning
+#define GAMETIME_EVENING	4	// Evening
+
+#define TARGET_HIGH		 2
+#define TARGET_MID		 1
+#define TARGET_LOW		 0	
 
 struct maneuverable {
 	int	turnLeft;
@@ -485,6 +499,21 @@ struct chunkTab{
 	int		acID;
 };
 
+//---------------Spot Part-------------------
+struct spotEntry {
+	int		modifier;
+	int		evaPt;
+	bool		minFlag;
+	bool		assigned;
+
+	spotEntry::spotEntry() {	// constructor
+		modifier = 0;
+		evaPt = 0;
+		minFlag = false;
+		assigned = false;
+	};
+};
+
 //---------------AI Player Part--------------
 struct plotNode {
 	int			manuv;
@@ -496,7 +525,30 @@ struct plotNode {
 	cmdForm			*p_plotForm;
 };
 
+enum manuType {
+	ManuvTL,
+	ManuvTR,
+	ManuvBL,
+	ManuvBR,
+	ManuvSL,
+	ManuvSR,
+	ManuvRL,
+	ManuvRR,
+	ManuvLC,
+	ManuvLD,
+	ManuvPW,
+	ManuvBK,
+	ManuvDB,
+	ManuvFR,
+	ManuvFG,
+	ManuvFW1,
+};
+
 //--------------- Common Functions --------------
+//Aircraft
+manuType convertManuvToManuType(int manuv);
+
+//MapAirforce
 void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv);
 void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv);
 void parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv);
@@ -534,27 +586,11 @@ void parseManuvDive(cmdForm *p_form, int *p_mp, int dive);
 void parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading);
 void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef);
 int parseManuv(cmdForm *p_form);
+int getDistanceHex(cmdForm formS, cmdForm fromD);
+int getClock(cmdForm formS, cmdForm formD);
 
 void 	modifyManeuverableByParsedManuv(cmdForm *form);
 
-enum manuType {
-	ManuvTL,
-	ManuvTR,
-	ManuvBL,
-	ManuvBR,
-	ManuvSL,
-	ManuvSR,
-	ManuvRL,
-	ManuvRR,
-	ManuvLC,
-	ManuvLD,
-	ManuvPW,
-	ManuvBK,
-	ManuvDB,
-	ManuvFR,
-	ManuvFG,
-	ManuvFW1,
-};
 void (* const pf_parseManuv[])(cmdForm *p_form, int *p_mp) = {
 	parseManuvTL,
 	parseManuvTR,
@@ -573,6 +609,11 @@ void (* const pf_parseManuv[])(cmdForm *p_form, int *p_mp) = {
 	parseManuvFG,
 	parseManuvMoveFwdOneHex,
 };
+// GameAirForce
+int getACsCntFromForms(cmdForm a_form[]);
+int getHighMidLow(cmdForm formA, cmdForm formT);
+int referSpotModifierTbl(cmdForm formA, cmdForm formT);
+
 
 ///////////////////////////////////////////////////////////////////////////
 // 
@@ -666,7 +707,7 @@ protected:
 //	void parseManuvMoveOneHexSpecifiedDirection(cmdForm *p_form, int intHeading);
 //	void parseManuvMoveOneHexClockRef(cmdForm *p_form, int clockRef);
 //	int parseManuv(cmdForm *p_form);
-	int getDistanceHex(cmdForm formS, cmdForm fromD);
+//	int getDistanceHex(cmdForm formS, cmdForm fromD);
 
   	D2D1_POINT_2F	virCorToCenterF(int virCorX, int virCorY);
 	void	NumerateStackNum(cmdForm *p_rtn);
@@ -793,7 +834,7 @@ public:
 	}
 
   	void cmdToMap(int cmd, cmdForm form, cmdForm *p_rtn);
-	int getClock(cmdForm formS, cmdForm formD);
+//	int getClock(cmdForm formS, cmdForm formD);
 	MapAirForce::MapAirForce() {
 		mPtrDWriteFactory = NULL;
 		mPtrTextFormat = NULL;
@@ -924,7 +965,8 @@ protected:
 	void ModifyGunPowerByDamage(gunPower *p_gunPower);
 	void copyPrevManuvToForm_(cmdForm *p_rtn);
 	void clearPlotTree();
-	void createPlotBranchRecursively_(plotNode *p_node, cmdForm form, int mp, int manu);
+	void createPlotBranchRecursively_(
+		plotNode *p_node, cmdForm form, int mp, int manu, int turnCnt);
 	int createPlotBranches_(plotNode *p_node, cmdForm form, int mp, int turnCnt);
 	void createPlotTreeRoot_();
 
@@ -1242,6 +1284,7 @@ public:
 	bool			m_ai;
 
   //------------------- public member functions ---------------------
+  	int getAircraftCnt_();
 	void cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn);
 	// constructor
 	PlayerAirForce::PlayerAirForce() {
@@ -1310,6 +1353,7 @@ protected:
 	int			m_gameTurn;
 	HWND m_hwndButtonProceed;
 	HWND m_hwndLV_FiringTable;
+	int			m_gameTime;
 
   //------------------- protected member functions ---------------------
   	HRESULT CreateDWriteTextFormat();
@@ -1372,6 +1416,12 @@ protected:
 	void repaintMaps();
 	void onEnterGameModeMove();
 	void onEnterGameModeFire();
+	//-----------------------
+	void getAllACs_(cmdForm a_form[][MAX_AC_CNT + 1]);
+	int getSpotModifier_(cmdForm formA, cmdForm formT);
+	void createSpotTbl_();
+	void onEnterGameModeSpot_();
+	//-----------------------
 	void onEnterGameModePlot();
 	void OnButtonProceed();
 	//----------------------
@@ -1446,6 +1496,7 @@ public:
 		mItrSelectedPlayer = mPlayers.end();
 		mMaps.clear();
 		mItrMaps =mMaps.end();
+		m_gameTime = GAMETIME_DAYTIME;
 	};
 
 	GameAirForce::~GameAirForce() {
