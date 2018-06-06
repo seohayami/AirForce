@@ -503,13 +503,13 @@ struct chunkTab{
 struct spotEntry {
 	int		modifier;
 	int		evaPt;
-	bool		minFlag;
+	bool		maxFlag;
 	bool		assigned;
 
 	spotEntry::spotEntry() {	// constructor
 		modifier = 0;
 		evaPt = 0;
-		minFlag = false;
+		maxFlag = false;
 		assigned = false;
 	};
 };
@@ -613,6 +613,14 @@ void (* const pf_parseManuv[])(cmdForm *p_form, int *p_mp) = {
 int getACsCntFromForms(cmdForm a_form[]);
 int getHighMidLow(cmdForm formA, cmdForm formT);
 int referSpotModifierTbl(cmdForm formA, cmdForm formT);
+void insertColumnsSpotLv(HWND hwndListView);
+void markMaxSpotTblColumn(spotEntry *p_entry, int sizeColumn, int sizeLine, int column);
+int markAssignedSpotTblIfOneMax(spotEntry *p_entry, int sizeColumn, int sizeLine);
+void findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine);
+void findUnassignedAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine);
+void solveSpotTbl(spotEntry *p_entry, int sizeColumn, int sizeLine);
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -925,6 +933,7 @@ protected:
 	int 			m_maxDiveSpeed;
 	list<plotNode *>	mp_plotNodes;
 	plotNode		*mp_plotNodeLeaves;
+	bool			m_spotted;
   //------------------- protected member functions ---------------------
 	HRESULT makeStrDamageCockpit(wchar_t *a_str);
 	HRESULT makeStrDamageEngine(wchar_t *a_str);
@@ -1065,6 +1074,7 @@ public:
 	 	m_pilotExperience = 0;
 		m_maxDiveSpeed = MAX_INT;
 		mp_plotNodeLeaves = NULL;
+		m_spotted = false;
 	};
 
 	Aircraft::Aircraft(Aircraft &src)
@@ -1079,6 +1089,7 @@ public:
 		m_pilotExperience = src.m_pilotExperience;
 	 	m_maxDiveSpeed = src.m_maxDiveSpeed;
 		mp_plotNodeLeaves = NULL;
+		m_spotted = src.m_plotted;
 		// ---------- public member variables ----------
 		m_id = src.m_id;
 		mAircraftModel = src.mAircraftModel;
@@ -1353,6 +1364,7 @@ protected:
 	int			m_gameTurn;
 	HWND m_hwndButtonProceed;
 	HWND m_hwndLV_FiringTable;
+	HWND m_hwndSpotLv;
 	int			m_gameTime;
 
   //------------------- protected member functions ---------------------
@@ -1441,6 +1453,8 @@ protected:
 	void insertItemsFiringTable(HWND hwndListView);
 	void insertColumnsFiringTable(HWND hwndListView);
 	HWND createFiringTable();
+//	void insertColumnsSpotLv(HWND hwndListView);
+	HWND createSpotLv_();
 	void handleWM_NOTIFY_FiringTable(LPARAM lParam);
 	void handleWM_NOTIFY(LPARAM lParam);
 	//----------------------

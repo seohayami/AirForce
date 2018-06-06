@@ -35,6 +35,11 @@
 #define IDC_COMBO2                      1023
 #define IDC_RICHEDIT21                  1024
 #define IDC_GAME_PROCEED		1100
+#define IDC_LV_GAME_FIRINGTBL		1101
+#define IDC_LV_GAME_SPOTTBL		1102
+
+
+#define IDS_LV_CN_FIRINGTBL_ATID	"Attacker ID"
 
 // Next default values for new objects
 // 

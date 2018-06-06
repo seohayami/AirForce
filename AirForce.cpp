@@ -9997,6 +9997,162 @@ int GameAirForce::getSpotModifier_(cmdForm formA, cmdForm formT)
 	return modifier;
 }
 
+void markMaxSpotTblColumn(spotEntry *p_entry, int sizeColumn, int sizeLine, int column)
+{
+	int	i, j;
+	int	max = MIN_INT;
+
+	for (i = 0; i < sizeLine; i++) {
+		j = column + i * sizeColumn;
+		if (p_entry[j].evaPt > max) {
+			max = p_entry[j].evaPt;
+		}
+	}
+	for (i = 0; i < sizeLine; i++) {
+		j = column + i * sizeColumn;
+		if (p_entry[j].evaPt == max) {
+			p_entry[j].maxFlag = true;
+		} else {
+			p_entry[j].maxFlag = false;
+		}
+	}
+}
+
+int markAssignedSpotTblIfOneMax(spotEntry *p_entry, int sizeColumn, int sizeLine)
+{
+// Function:
+// 	if only one Max in a column, then that line is assigned to the column
+// Return:
+// 	number of turning on events of the assinged flag in SpotTbl
+	int	c, l, c1;
+	int	cntMax = 0; 
+	int	cntAssinged = 0;
+	int	hitLine;
+
+	for (c = 0; c < sizeColumn; c++) {
+		cntMax = 0;
+		for (l = 0; l < sizeLine; l++) {
+			if (p_entry[c + l * sizeColumn].maxFlag == true) {
+				cntMax ++;	// count maxFlags
+				hitLine = l;
+			}
+		}
+		if (cntMax == 1) {	// only one maxFlag is on
+			if (p_entry[c + hitLine * sizeColumn].assigned == false) {
+				p_entry[c + hitLine * sizeColumn].assigned = true;
+				cntAssigned ++;
+			}
+			for (c1 = 0; c1 < sizeColumn; c1++) {
+				if (c1 != c) {	// clear other maxFlags on that line
+					p_entry[c1 + hitLine * sizeColumn].maxFlag == false;
+				}
+			}
+		}
+	}
+	return cntAssigned;
+}
+
+void findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine)
+{
+// Function:
+// 	find a line who has a max or plural max's, 
+// 	and select its column whose max value is the largest
+// 	and assign the column for that line
+// 	and clear maxFlags for that line and the column
+//
+	int	c, l, c1, l1;
+	int	cntMax = 0
+	int	max = MIN_INT;
+	int	hitColumn;
+
+	for (l = 0; l < sizeLine; l ++) {
+		cntMax = 0;
+		max = MIN_INT;
+		for (c = 0; c < sizeColumn; c++) {
+			if (p_entry[c + l * sizeColumn].maxFlag == true) {
+				cntMax ++;
+				if (p_entry[c + l * sizeColumn].evaPt > max) {
+					max = p_entry[c + l * sizeColumn].evaPt;
+					hitColumn = c;
+				}
+			}
+		}
+		if (cntMax > 0) {
+			p_entry[hitColumn + l * sizeColumn].assigned = true;
+			for (c1 = 0; c1 < sizeColumn; c1++) {
+				if (c1 != hitColumn) {	// clear other maxFlags on that line
+					p_entry[c1 + l * sizeColumn].maxFlag == false;
+				}
+			}
+			for (l1 = 0; l1 < sizeLine; l1++) {
+				if (l1 != l) {	// clear other maxFlags on that column
+					p_entry[hitColumn + l1 * sizeColumn].maxFlag == false;
+				}
+			}
+			return;	// if assigned, then exit
+		}
+	}
+}
+
+void findUnassignedAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine) 
+{
+// Function:
+// 	find a line whose assinged flags are all false
+// 	find a column whose evaPt is the largest on that line
+// 	and assign the column for that line
+// 	and clear maxFlags for that line and the column
+//
+	int	c, l, c1, l1;
+	int	max = MIN_INT;
+	int	hitColumn;
+	bool	asn = false;
+
+	for (l = 0; l < sizeLine; l ++) {
+		asn = false;
+		for (c = 0; c < sizeColumn; c++) {
+			if (p_entry[c + l * sizeColumn].assigned == true) {
+				asn = true;
+			}
+			if (p_entry[c + l * sizeColumn].evaPt > max) {
+				max = p_entry[c + l * sizeColumn].evaPt;
+				hitColumn = c;
+			}
+		}
+		if (asn == false) {
+			p_entry[hitColumn + l * sizeColumn].assigned = true;
+			for (c1 = 0; c1 < sizeColumn; c1++) {
+				if (c1 != hitColumn) {	// clear other maxFlags on that line
+					p_entry[c1 + l * sizeColumn].maxFlag == false;
+				}
+			}
+			for (l1 = 0; l1 < sizeLine; l1++) {
+				if (l1 != l) {	// clear other maxFlags on that column
+					p_entry[hitColumn + l1 * sizeColumn].maxFlag == false;
+				}
+			}
+		}
+	}
+}
+
+
+void solveSpotTbl(spotEntry *p_entry, int sizeColumn, int sizeLine) 
+{
+	int	i;
+	int	cntAssigned = 1;
+
+	for (i = 0; i < sizeColumn; i++) 
+		markMaxSpotTblColumn(p_entry, sizeColumn, sizeLine, i);
+	}
+	while (cntAssigned > 0) {
+		while (cntAssigned > 0) {
+			cntAssigned = markAssignedSpotTblIfOneMax(p_entry, sizeColumn, sizeLine);
+		}
+		findMaxAndAssign(p_entry, sizeColumn, sizeLine);
+		cntAssigned = 1;
+	}
+	findUnassignedAndAssign(p_entry, sizeColumn, sizeLine);
+}
+
 void GameAirForce::createSpotTbl_()
 {
 	//-------- check prerequisite --------
@@ -10038,21 +10194,24 @@ void GameAirForce::createSpotTbl_()
 //		 vector<spotEntry>(cntACsPlayer1)
 //		);
 
-	spotEntry a_spotTbl = new spotEntry[cntACsPlayer0][cntACsPlayer1];
+	spotEntry *a_spotTbl = new spotEntry[cntACsPlayer0][cntACsPlayer1];
 
-	//-------- fill in modifier in spotTbl --------
+	//-------- fill in modifier of spotTbl --------
+	
+	int	factorEvapt_Dist = -7;
+
 	for (i =0; i < cntACsPlayer0; i++) {
 		for (j = 0; j < cntACsPlayer1; j++) {
-			a_spotTbl[i][j].modifier 
-				= getSpotModifier(a_form[0][i], a_form[1][j]);
 			a_spotTbl[i][j].evaPt 
-				= getDistanceHex(a_form[0][i], a_form[1][j])
+				= this->getSpotModifier_(a_form[0][i], a_form[1][j])
+				+ getDistanceHex(a_form[0][i], a_form[1][j]) / factorEvapt_Dist
 				+ (int) (abs(
 					a_form[0][i].alt - a_form[1][j].alt
-					     ) / 500.0f
+					     ) / 500.0f / factorEvapt_Dist
 					);
 		}
 	}
+	solveSpotTbl(a_spotTbl, cntACsPlayer1, cntACsPlayer0);
 
 	delete[][] a_spotTbl;
 }
@@ -10600,6 +10759,99 @@ HWND GameAirForce::createFiringTable()
 	insertColumnsFiringTable(m_hwndLV_FiringTable);
 
 	return m_hwndLV_FiringTable;
+}
+
+void insertColumnsSpotLv(HWND hwndListView)
+{
+	LVCOLUMN	lvc;
+	int		rtn;
+
+	// PITFALL 2018/03/18
+	// without lvc.fmt =LVCFMT_LEFT, column name of "Target" would not show up.
+	// I dont know the reason 
+	
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.fmt = LVCFMT_LEFT;
+	lvc.cx = 180;
+	lvc.pszText = L"Spotter";
+	lvc.iSubItem = 0;
+	rtn = ListView_InsertColumn(hwndListView, 0, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsSpotLv: failed to insert column0.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 180;
+	lvc.pszText = L"Target";
+	lvc.iSubItem = 1;
+	rtn = ListView_InsertColumn(hwndListView, 1, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsSpotLv: failed to insert column1.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+	
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 80;
+	lvc.pszText = L"Modifier";
+	lvc.iSubItem = 2;
+	rtn = ListView_InsertColumn(hwndListView, 2, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsSpotLv: failed to insert column2.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 80;
+	lvc.pszText = L"DieRoll";
+	lvc.iSubItem = 3;
+	rtn = ListView_InsertColumn(hwndListView, 3, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsSpotLv: failed to insert column3.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+
+	lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+	lvc.cx = 120;
+	lvc.pszText = L"Result";
+	lvc.iSubItem = 4;
+	rtn = ListView_InsertColumn(hwndListView, 4, &lvc);
+	if (rtn == -1) {
+		MessageBox(NULL, 
+  			L"Error: insertColumnsSpotLv: failed to insert column4.\n",
+			NULL,
+			MB_OKCANCEL | MB_ICONSTOP
+		);
+	}
+}
+	
+HWND GameAirForce::createSpotLv_()
+{
+	HWND hwndListView;
+
+	m_hwndSpotLv = CreateWindow(WC_LISTVIEW,
+			L"Spotting Table",
+			WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT,
+			100, 900, 880, 400,
+			m_hwnd,
+			(HMENU) IDC_LV_GAME_SPOTTBL,
+			(HINSTANCE)GetWindowLong(m_hwnd, GWLP_HINSTANCE),
+			NULL
+	);
+	insertColumnsSpotLv(m_hwndSpotLv);
+
+	return m_hwndSpotLv;
 }
 
 void GameAirForce::handleWM_NOTIFY_FiringTable(LPARAM lParam)
@@ -11350,6 +11602,7 @@ LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			NULL
 		);
 		createFiringTable();
+		createSpotLv();
 		break;
 
 	    case WM_DESTROY:
