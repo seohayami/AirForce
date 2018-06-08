@@ -545,10 +545,10 @@ enum manuType {
 };
 
 //--------------- Common Functions --------------
-//Aircraft
+//--------Aircraft
 manuType convertManuvToManuType(int manuv);
 
-//MapAirforce
+//--------MapAirforce
 void parseManuvModifyVirCorSlipRollNorth(cmdForm *p_form, int manuv);
 void parseManuvModifyVirCorSlipRollNorthEast(cmdForm *p_form, int manuv);
 void parseManuvModifyVirCorSlipRollSouthEast(cmdForm *p_form, int manuv);
@@ -609,9 +609,10 @@ void (* const pf_parseManuv[])(cmdForm *p_form, int *p_mp) = {
 	parseManuvFG,
 	parseManuvMoveFwdOneHex,
 };
-// GameAirForce
+//-------- GameAirForce
 int getACsCntFromForms(cmdForm a_form[]);
 int getHighMidLow(cmdForm formA, cmdForm formT);
+//----Spot
 int referSpotModifierTbl(cmdForm formA, cmdForm formT);
 void insertColumnsSpotLv(HWND hwndListView);
 void markMaxSpotTblColumn(spotEntry *p_entry, int sizeColumn, int sizeLine, int column);
@@ -619,6 +620,8 @@ int markAssignedSpotTblIfOneMax(spotEntry *p_entry, int sizeColumn, int sizeLine
 void findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine);
 void findUnassignedAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine);
 void solveSpotTbl(spotEntry *p_entry, int sizeColumn, int sizeLine);
+int getIdxTargetSpotTbl(int idxSpotter,
+	spotEntry *p_entry, int sizeSpotC, int sizeSpotL);
 
 
 
@@ -1431,6 +1434,10 @@ protected:
 	//-----------------------
 	void getAllACs_(cmdForm a_form[][MAX_AC_CNT + 1]);
 	int getSpotModifier_(cmdForm formA, cmdForm formT);
+	void insertItemSpotLv_(cmdForm *p_formA, cmdForm *p_formT, spotEntry *p_entry);
+	void insertItemsSpotLv_(
+		spotEntry *p_entry, int sizeSpotC, int sizeSpotL,
+		cmdForm *p_form, int sizeFormC, int sizeFormL);
 	void createSpotTbl_();
 	void onEnterGameModeSpot_();
 	//-----------------------

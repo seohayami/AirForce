@@ -9189,7 +9189,8 @@ void GameAirForce::resolveFires()
 	}
 }
 
-BOOL GameAirForce::addResolvedFireToFE(wchar_t *nameAttacker, int attenuation, int die, wchar_t *result)
+BOOL GameAirForce::addResolvedFireToFE(
+	wchar_t *nameAttacker, int attenuation, int die, wchar_t *result)
 {
 	list<std::shared_ptr<firingEntry>>::iterator itrFiringEnt;
 	static int	i = 0;
@@ -10153,8 +10154,133 @@ void solveSpotTbl(spotEntry *p_entry, int sizeColumn, int sizeLine)
 	findUnassignedAndAssign(p_entry, sizeColumn, sizeLine);
 }
 
-void GameAirForce::createSpotTbl_()
+void GameAirForce::insertItemSpotLv_(cmdForm *p_formA, cmdForm *p_formT, spotEntry *p_entry)
 {
+	LVITEM		lvi;
+	int		idx;
+	BOOL		success = false;
+	wchar_t	str[8];
+
+	lvi.mask =LVIF_TEXT;
+	lvi.pszText = p_formA->aircraftName;
+	lvi.iItem = MAX_INT;	// insert item to the bottem of the ListView
+	lvi.iSubItem = 0;	// spotter name
+	idx = ListView_InsertItem(hwndListView, &lvi);	// idx = actual index of insert
+
+	lvi.mask =LVIF_TEXT;
+	lvi.pszText = p_formT->aircraftName;
+	lvi.iItem = idx;
+	lvi.iSubItem = 1;	// target name
+	success = ListView_SetItem(m_hwndSpotLv, &lvi);
+	if (!success) {
+		MessageBox(NULL, 
+  			L"Error: insertItemSpotLv_: failed to set item#1.\n",
+			NULL,
+			MB_OK | MB_ICONSTOP
+		);
+	}
+
+	int	modifier = p_entry->modifier;
+	wsprintf(str, L"%d", modifier);
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = str;
+	lvi.iItem = idx;
+	lvi.iSubItem = 2;	// modifier
+	success = ListView_SetItem(hwndListView, &lvi);
+	if (!success) {
+		MessageBox(NULL, 
+  			L"Error: insertItemSpotLv_: failed to set item#2.\n",
+			NULL,
+			MB_OK | MB_ICONSTOP
+		);
+	}
+
+	int die = rollDice();
+	wsprintf(str, L"%d", die);
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = str;
+	lvi.iItem = idx;
+	lvi.iSubItem = 3;	// die roll
+	success = ListView_SetItem(hwndListView, &lvi);
+	if (!success) {
+		MessageBox(NULL, 
+  			L"Error: insertItemSpotLv_: failed to set item#3.\n",
+			NULL,
+			MB_OK | MB_ICONSTOP
+		);
+	}
+
+	if (die + modifier >= 4) {
+		wsprintf(str, L"Spotted");
+	} else {
+		wsprintf(str, L"-");
+	}
+	lvi.mask = LVIF_TEXT;
+	lvi.pszText = str;
+	lvi.iItem = idx;
+	lvi.iSubItem = 4;	// Result of spotting
+	success = ListView_SetItem(hwndListView, &lvi);
+	if (!success) {
+		MessageBox(NULL, 
+  			L"Error: insertItemSpotLv_: failed to set item#4.\n",
+			NULL,
+			MB_OK | MB_ICONSTOP
+		);
+	}
+}
+
+int getIdxTargetSpotTbl(int idxSpotter,
+	spotEntry *p_entry, int sizeSpotC, int sizeSpotL)
+{
+// Return:
+// 	index of Target in spotTbl
+// 	if -1, then no target
+//
+	int	idxTarget = -1;
+	int	cntTarget = 0;
+
+	for (i = 0; i < sizeSpotC; i++) {
+		if (p_entry[idxSpotter][i].assigned == true) {
+			idxTarget = i;
+			cntTarget ++;
+		}
+	}
+	if (cntTarget >= 2) {
+		MessageBox(NULL, 
+  			L"Error: getIdxTargetSpotTbl: invalid SpotTbl: more than 1 target.\n",
+			NULL,
+			MB_OK | MB_ICONSTOP
+		);
+		idxTarget = -1;
+	}
+	return idxTarget;
+}
+
+void GameAirForce::insertItemsSpotLv_(
+	spotEntry *p_entry, int sizeSpotC, int sizeSpotL,
+	cmdForm *a_formA, cmdForm *a_formT)
+{
+	int	i;
+	int	idxT;
+
+	for (i = 0; i < sizeSpotL; i++) {
+		idxT = getIdxTargetSpotTbl(i, p_entry,sizeSpotC, sizeSpotL);
+		if (idxT >= 0) {
+			insertItemSpotLv_(
+				a_formA[i], a_formT[idxT], p_entry[i][idxT]);
+		}
+	}
+	// under construction
+}
+
+void GameAirForce::createSpotTbl_(bool line0IsSpotter)
+{
+// Input:
+// 	column0IsSpotter:
+// 		true if line0 of a_form[MAX_PLAYER_CNT][MAX_AC_CNT + 1]
+// 		is for spotters and line1 is for targets
+// 		false if line1 is for spotters and line0 is for targets
+//
 	//-------- check prerequisite --------
 	int	cntPlayers = (this->mPlayers).size();
 
@@ -10181,37 +10307,52 @@ void GameAirForce::createSpotTbl_()
 	}
 	this->getAllACs_(a_form);
 
-	int	cntACsPlayer0 = getACsCntFromForms(a_form[0]);
-	int	cntACsPlayer1 = getACsCntFromForms(a_form[1]);
-	if ((cntACsPlayer0 == 0) || (cntACsPlayer1 == 0)) {
+	int	cntACsPlayerA, cntACsPlayerT;
+	int	idxA, idxT;
+	if (line0IsSpotter) {
+		cntACsPlayerA = getACsCntFromForms(a_form[0]);
+		cntACsPlayerT = getACsCntFromForms(a_form[1]);
+		idxA = 0;
+		idxT = 1;
+	} else {
+		cntACsPlayerA = getACsCntFromForms(a_form[1]);
+		cntACsPlayerT = getACsCntFromForms(a_form[0]);
+		idxA = 1;
+		idxT = 0;
+	}
+	if ((cntACsPlayerA == 0) || (cntACsPlayerT == 0)) {
 		return;		// do nothing if no aircrafts
 	}
 
 	//-------- allocate mem for spotTbl --------
 //	vector<vector<spotEntry>> vv_spotTbl;
 //	vv_spotTbl = vector<vector<spotEntry>>
-//		(cntACsPlayer0, 
-//		 vector<spotEntry>(cntACsPlayer1)
+//		(cntACsPlayerA, 
+//		 vector<spotEntry>(cntACsPlayerT)
 //		);
 
-	spotEntry *a_spotTbl = new spotEntry[cntACsPlayer0][cntACsPlayer1];
+	//-------- allocate mem. for spotTbl --------
+	spotEntry *a_spotTbl = new spotEntry[cntACsPlayerA][cntACsPlayerT];
 
 	//-------- fill in modifier of spotTbl --------
 	
 	int	factorEvapt_Dist = -7;
 
-	for (i =0; i < cntACsPlayer0; i++) {
-		for (j = 0; j < cntACsPlayer1; j++) {
+	for (i =0; i < cntACsPlayerA; i++) {
+		for (j = 0; j < cntACsPlayerT; j++) {
 			a_spotTbl[i][j].evaPt 
-				= this->getSpotModifier_(a_form[0][i], a_form[1][j])
-				+ getDistanceHex(a_form[0][i], a_form[1][j]) / factorEvapt_Dist
+				= this->getSpotModifier_(a_form[idxA][i], a_form[idxT][j])
+				+ getDistanceHex(a_form[idxA][i], a_form[idxT][j]) 
+				Å@/ factorEvapt_Dist
 				+ (int) (abs(
-					a_form[0][i].alt - a_form[1][j].alt
+					a_form[idxA][i].alt - a_form[idxT][j].alt
 					     ) / 500.0f / factorEvapt_Dist
 					);
 		}
 	}
-	solveSpotTbl(a_spotTbl, cntACsPlayer1, cntACsPlayer0);
+	solveSpotTbl(a_spotTbl, cntACsPlayerT, cntACsPlayerA);
+	insertItemsSpotLv_(a_spotTbl, cntACsPlayerT, cntACsPlayerA,
+		a_form[idxA], a_form[idxT]);
 
 	delete[][] a_spotTbl;
 }
@@ -10219,7 +10360,8 @@ void GameAirForce::createSpotTbl_()
 
 void GameAirForce::onEnterGameModeSpot_()
 {
-	createSpotTbl_();
+	createSpotTbl_(true);	// player0= spotters, player1= targets
+	createSpotTbl_(false);	// player0= targets, player1= spotters
 }
 
 void GameAirForce::onEnterGameModePlot()
@@ -11602,7 +11744,7 @@ LRESULT GameAirForce::HandleMessage(UINT uMsg, WPARAM wParam, LPARAM lParam)
 			NULL
 		);
 		createFiringTable();
-		createSpotLv();
+		createSpotLv_();
 		break;
 
 	    case WM_DESTROY:
