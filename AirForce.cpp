@@ -10270,7 +10270,6 @@ void GameAirForce::insertItemSpotLv_(cmdForm *p_formA, cmdForm *p_formT, spotEnt
 		cmdForm f = *p_formT;
 		f.command = SET_SPOTTED;
 		f.playerID = ALL_PLAYERS;
-		f.selectedAircraft = f.aircraftID;
 		cmdToGame(SET_SPOTTED, f, NULL);
 	} else {
 		wsprintf(str, L"failed");
