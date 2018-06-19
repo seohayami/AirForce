@@ -191,6 +191,7 @@ enum CommandToX {
 	REPLICA_AC		= 24,
 	REPLICA_LOG		= 25,
 	AI_PLOT			= 26,
+	SET_SPOTTED		= 27,
 // cmdToMap commands
 	FINALIZE_MANUV		= 1001,
 	REFLECT_ERASE_PLOT	= 1002,
@@ -389,6 +390,7 @@ struct cmdForm {
 	int		gameTurn;
 	fstream		*p_file;
 	UINT_PTR 	p_ptr; // pointer for general use
+	bool		spotted;
 };
 
 struct ammo {
@@ -610,14 +612,14 @@ void (* const pf_parseManuv[])(cmdForm *p_form, int *p_mp) = {
 	parseManuvMoveFwdOneHex,
 };
 //-------- GameAirForce
-int getACsCntFromForms(cmdForm a_form[]);
+int getACsCntFromForms(cmdForm a_form[], bool unspottedOnly);
 int getHighMidLow(cmdForm formA, cmdForm formT);
 //----Spot
 int referSpotModifierTbl(cmdForm formA, cmdForm formT);
 void insertColumnsSpotLv(HWND hwndListView);
 void markMaxSpotTblColumn(spotEntry *p_entry, int sizeColumn, int sizeLine, int column);
 int markAssignedSpotTblIfOneMax(spotEntry *p_entry, int sizeColumn, int sizeLine);
-void findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine);
+int findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine);
 void findUnassignedAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine);
 void solveSpotTbl(spotEntry *p_entry, int sizeColumn, int sizeLine);
 int getIdxTargetSpotTbl(int idxSpotter,
@@ -936,7 +938,6 @@ protected:
 	int 			m_maxDiveSpeed;
 	list<plotNode *>	mp_plotNodes;
 	plotNode		*mp_plotNodeLeaves;
-	bool			m_spotted;
   //------------------- protected member functions ---------------------
 	HRESULT makeStrDamageCockpit(wchar_t *a_str);
 	HRESULT makeStrDamageEngine(wchar_t *a_str);
@@ -1004,7 +1005,7 @@ public:
 	int	m_virCorX, m_virCorY;
 	float	m_heading;
 	int	m_speed;
-	float	m_alt;
+	float	m_alt;				// x1000 feet
 	int	m_bank;
 	int	m_nose;
 	bool	m_loaded;
@@ -1016,6 +1017,7 @@ public:
 	int	m_logGameTurn;		// this variable is used for logging
 	UINT_PTR mp_owner; 	// pointer to the owner player if used as Aircraft
 			  	// pointer to the owner aircraft if used as Logs
+	bool			m_spotted;
 
   //------------------- public member functions ---------------------
 	Aircraft::Aircraft() {
@@ -1092,7 +1094,7 @@ public:
 		m_pilotExperience = src.m_pilotExperience;
 	 	m_maxDiveSpeed = src.m_maxDiveSpeed;
 		mp_plotNodeLeaves = NULL;
-		m_spotted = src.m_plotted;
+		m_spotted = src.m_spotted;
 		// ---------- public member variables ----------
 		m_id = src.m_id;
 		mAircraftModel = src.mAircraftModel;
@@ -1287,6 +1289,8 @@ protected:
 	void createPlotTrees(cmdForm form, cmdForm *p_rtn);
 	void aiPlot(cmdForm form, cmdForm *p_rtn);
 	bool cmdToPlayerAI_PLOT(cmdForm form, cmdForm *p_rtn);
+	void cmdToPlayerSetSpotted_(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr);
+	void cmdToPlayerSET_SPOTTED_(cmdForm form, cmdForm *p_rtn);
 
 public:
   //------------------- public member variables ---------------------
@@ -1437,8 +1441,8 @@ protected:
 	void insertItemSpotLv_(cmdForm *p_formA, cmdForm *p_formT, spotEntry *p_entry);
 	void insertItemsSpotLv_(
 		spotEntry *p_entry, int sizeSpotC, int sizeSpotL,
-		cmdForm *p_form, int sizeFormC, int sizeFormL);
-	void createSpotTbl_();
+		cmdForm *a_formA, cmdForm *a_formT);
+	void createSpotTbl_(bool line0IsSpotter);
 	void onEnterGameModeSpot_();
 	//-----------------------
 	void onEnterGameModePlot();

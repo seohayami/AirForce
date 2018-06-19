@@ -1821,6 +1821,7 @@ void Aircraft::copyAcToForm(cmdForm *p_form)
 		= aircraftModels[mAircraftModel].fireAccuracy;
 	p_form->dmg = m_damage;
 	p_form->p_aircraft = (int*)this;
+	p_form->spotted = m_spotted;
 }
 
 void Aircraft::copyPrevManuvToForm_(cmdForm *p_rtn)
@@ -3230,6 +3231,32 @@ bool PlayerAirForce::cmdToPlayerAI_PLOT(cmdForm form, cmdForm *p_rtn)
 	return true;
 }
 
+void PlayerAirForce::cmdToPlayerSetSpotted_(cmdForm form, list<shared_ptr<Aircraft>>::iterator itr)
+{
+	(*itr)->m_spotted = true;
+}
+
+void PlayerAirForce::cmdToPlayerSET_SPOTTED_(cmdForm form, cmdForm *p_rtn)
+{
+	std::list<std::shared_ptr<Aircraft>>::iterator itr;
+
+	if (form.selectedAircraft == SELECTED_AC) {
+		if (m_ItrSelectedAircraft != mAircrafts.end()) {
+			cmdToPlayerSetSpotted_(form, m_ItrSelectedAircraft);
+		}
+	} else if (form.selectedAircraft == ALL_AC) {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			cmdToPlayerSetSpotted_(form, itr);
+		}
+	} else {
+		for (itr = mAircrafts.begin(); itr != mAircrafts.end(); itr++) {
+			if ((*itr)->m_id == form.selectedAircraft) {
+				cmdToPlayerSetSpotted_(form, itr);
+			}
+		}
+	}
+}
+
 void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 {
 
@@ -3454,6 +3481,9 @@ void PlayerAirForce::cmdToPlayer(int cmd, cmdForm form, cmdForm *p_rtn)
 			break;
 		case AI_PLOT:
 			cmdToPlayerAI_PLOT(form, p_rtn);
+			break;
+		case SET_SPOTTED:
+			cmdToPlayerSET_SPOTTED_(form, p_rtn);
 			break;
 		default:
 			break;
@@ -7098,9 +7128,9 @@ void MapAirForce::deleteUnusedGunFactorF(firingEntry *p_fe, cmdForm formA, cmdFo
 		deleteUnusedGunFactorFExcpB(p_fe, clockAtoT);
 	} else if (clockAtoT == 18) {				// Colision
 	} else {
-		if (formT.alt - formA.alt >= 500.0f) {		// High
+		if (formT.alt - formA.alt >= 0.5f) {		// High
 			deleteUnusedGunFactorFExcpH(p_fe, clockAtoT);
-		} else if (formT.alt - formA.alt <= -500.0f) {	// Low
+		} else if (formT.alt - formA.alt <= -0.5f) {	// Low
 			deleteUnusedGunFactorFExcpL(p_fe, clockAtoT);
 		} else {                                 	// Mid
 			deleteUnusedGunFactorFExcpM(p_fe, clockAtoT);
@@ -7125,7 +7155,7 @@ void MapAirForce::cmdToGameAppendFiring(int acIDtarget)
 	}
 
 	distH = getDistanceHex(a_formA[0], a_formT[0]);
-	distV = (int) (abs(a_formA[0].alt - a_formT[0].alt) / 500.0f);
+	distV = (int) (abs(a_formA[0].alt - a_formT[0].alt) / 0.5f);
 	modifA = getFireModifierA(a_formA[0]);
 	modifT = getFireModifierT(a_formT[0]);
 	modifD = getFireModifierD(a_formA[0], a_formT[0]);
@@ -8229,6 +8259,7 @@ void GameAirForce::cmdToGame(int cmd, cmdForm form, cmdForm *p_rtnForms)
 		case REPLICA_AC:
 		case REPLICA_LOG:
 		case AI_PLOT:
+		case SET_SPOTTED:
 			if (form.playerID == SELECTED_PLAYER) {
 				if (mItrSelectedPlayer != mPlayers.end()) {
 					(*mItrSelectedPlayer)
@@ -9881,6 +9912,7 @@ void GameAirForce::getAllACs_(cmdForm a_form[][MAX_AC_CNT + 1])
 {
 	list<shared_ptr<PlayerAirForce>>::iterator itrBackup = mItrSelectedPlayer;
 	list<shared_ptr<PlayerAirForce>>::iterator itr;
+	int	i = 0;
 
 	for (itr = mPlayers.begin(); itr != mPlayers.end(); itr++) {
 		this->mItrSelectedPlayer = itr;
@@ -9889,18 +9921,24 @@ void GameAirForce::getAllACs_(cmdForm a_form[][MAX_AC_CNT + 1])
 		f.command = GET_AC;
 		f.playerID = SELECTED_PLAYER;
 		f.selectedAircraft = ALL_AC;
-		cmdToGame(GET_AC, form, a_form[i]);
+		cmdToGame(GET_AC, f, a_form[i]);
 		i++;
 	}
 	mItrSelectedPlayer = itrBackup;
 }
 
-int getACsCntFromForms(cmdForm a_form[])
+int getACsCntFromForms(cmdForm a_form[], bool unspottedOnly)
 {
 	int	i = 0;
 
 	while (a_form[i].command != TAIL) {
+		if (unspottedOnly) {
+			if (a_form[i].spotted == false) {
+				i++;
+			}
+		} else {
 		i++;
+		}
 	}
 	return i;
 }
@@ -9930,7 +9968,7 @@ int referSpotModifierTbl(cmdForm formA, cmdForm formT)
 //
 	int	distH = getDistanceHex(formA, formT);
 	int	clockAtoT = getClock(formA, formT);
-	int	highlow = getHighMidLow(formA, formT)
+	int	highlow = getHighMidLow(formA, formT);
 	if (distH == 0) {
 		if (formT.alt - formA.alt >= 0) {
 			return aircraftModels[formA.aircraftModel].spotModifier[3][0];
@@ -9939,7 +9977,7 @@ int referSpotModifierTbl(cmdForm formA, cmdForm formT)
 		}
 	} else {
 		int i = (clockAtoT - 2) / 2;
-		return aircraftModels[formA.aircraftModel].spotModifier[highlow][clockAtoT];
+		return aircraftModels[formA.aircraftModel].spotModifier[highlow][i];
 	}
 }
 
@@ -9947,7 +9985,7 @@ int GameAirForce::getSpotModifier_(cmdForm formA, cmdForm formT)
 {
 	int	modifier = 0;
 	int	distH = getDistanceHex(formA, formT);
-	int	distV = (int) (abs(formA.alt - formT.alt) / 500.0f);
+	int	distV = (int) (abs(formA.alt - formT.alt) / 0.5f);
 	int	clockAtoT = getClock(formA, formT);
 
 	if (m_gameTime == GAMETIME_NIGHT) {
@@ -10002,15 +10040,22 @@ void markMaxSpotTblColumn(spotEntry *p_entry, int sizeColumn, int sizeLine, int 
 {
 	int	i, j;
 	int	max = MIN_INT;
+	spotEntry	*ptr;
 
 	for (i = 0; i < sizeLine; i++) {
 		j = column + i * sizeColumn;
+		ptr = p_entry + j;
+// Memo:2018/06/17
+//  debugger cannot trace array except the first element of the array.
+//  if array is refered using pointer.
+//  So for the purpose of debugging,  ptr = p_entry + j was added .
 		if (p_entry[j].evaPt > max) {
 			max = p_entry[j].evaPt;
 		}
 	}
 	for (i = 0; i < sizeLine; i++) {
 		j = column + i * sizeColumn;
+		ptr = p_entry + j;
 		if (p_entry[j].evaPt == max) {
 			p_entry[j].maxFlag = true;
 		} else {
@@ -10027,7 +10072,7 @@ int markAssignedSpotTblIfOneMax(spotEntry *p_entry, int sizeColumn, int sizeLine
 // 	number of turning on events of the assinged flag in SpotTbl
 	int	c, l, c1;
 	int	cntMax = 0; 
-	int	cntAssinged = 0;
+	int	cntAssigned = 0;
 	int	hitLine;
 
 	for (c = 0; c < sizeColumn; c++) {
@@ -10045,7 +10090,7 @@ int markAssignedSpotTblIfOneMax(spotEntry *p_entry, int sizeColumn, int sizeLine
 			}
 			for (c1 = 0; c1 < sizeColumn; c1++) {
 				if (c1 != c) {	// clear other maxFlags on that line
-					p_entry[c1 + hitLine * sizeColumn].maxFlag == false;
+					p_entry[c1 + hitLine * sizeColumn].maxFlag = false;
 				}
 			}
 		}
@@ -10053,23 +10098,31 @@ int markAssignedSpotTblIfOneMax(spotEntry *p_entry, int sizeColumn, int sizeLine
 	return cntAssigned;
 }
 
-void findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine)
+int findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine)
 {
 // Function:
 // 	find a line who has a max or plural max's, 
 // 	and select its column whose max value is the largest
 // 	and assign the column for that line
 // 	and clear maxFlags for that line and the column
+// Return:
+// 	number of turning on events of the assinged flag in SpotTbl
 //
 	int	c, l, c1, l1;
-	int	cntMax = 0
+	int	cntMax = 0;
 	int	max = MIN_INT;
 	int	hitColumn;
+	int	cntAssigned = 0;
+	bool	lineAssigned = false;
 
 	for (l = 0; l < sizeLine; l ++) {
 		cntMax = 0;
 		max = MIN_INT;
 		for (c = 0; c < sizeColumn; c++) {
+			if (p_entry[c + l * sizeColumn].assigned == true) {
+				lineAssigned = true;
+				break;
+			}
 			if (p_entry[c + l * sizeColumn].maxFlag == true) {
 				cntMax ++;
 				if (p_entry[c + l * sizeColumn].evaPt > max) {
@@ -10078,8 +10131,9 @@ void findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine)
 				}
 			}
 		}
-		if (cntMax > 0) {
+		if ((lineAssigned == false) && (cntMax > 0)) {
 			p_entry[hitColumn + l * sizeColumn].assigned = true;
+			cntAssigned ++;
 			for (c1 = 0; c1 < sizeColumn; c1++) {
 				if (c1 != hitColumn) {	// clear other maxFlags on that line
 					p_entry[c1 + l * sizeColumn].maxFlag == false;
@@ -10090,9 +10144,10 @@ void findMaxAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine)
 					p_entry[hitColumn + l1 * sizeColumn].maxFlag == false;
 				}
 			}
-			return;	// if assigned, then exit
+			return cntAssigned;	// if assigned, then exit
 		}
 	}
+	return cntAssigned;
 }
 
 void findUnassignedAndAssign(spotEntry *p_entry, int sizeColumn, int sizeLine) 
@@ -10141,15 +10196,14 @@ void solveSpotTbl(spotEntry *p_entry, int sizeColumn, int sizeLine)
 	int	i;
 	int	cntAssigned = 1;
 
-	for (i = 0; i < sizeColumn; i++) 
+	for (i = 0; i < sizeColumn; i++) {
 		markMaxSpotTblColumn(p_entry, sizeColumn, sizeLine, i);
 	}
 	while (cntAssigned > 0) {
 		while (cntAssigned > 0) {
 			cntAssigned = markAssignedSpotTblIfOneMax(p_entry, sizeColumn, sizeLine);
 		}
-		findMaxAndAssign(p_entry, sizeColumn, sizeLine);
-		cntAssigned = 1;
+		cntAssigned = findMaxAndAssign(p_entry, sizeColumn, sizeLine);
 	}
 	findUnassignedAndAssign(p_entry, sizeColumn, sizeLine);
 }
@@ -10165,7 +10219,7 @@ void GameAirForce::insertItemSpotLv_(cmdForm *p_formA, cmdForm *p_formT, spotEnt
 	lvi.pszText = p_formA->aircraftName;
 	lvi.iItem = MAX_INT;	// insert item to the bottem of the ListView
 	lvi.iSubItem = 0;	// spotter name
-	idx = ListView_InsertItem(hwndListView, &lvi);	// idx = actual index of insert
+	idx = ListView_InsertItem(m_hwndSpotLv, &lvi);	// idx = actual index of insert
 
 	lvi.mask =LVIF_TEXT;
 	lvi.pszText = p_formT->aircraftName;
@@ -10186,7 +10240,7 @@ void GameAirForce::insertItemSpotLv_(cmdForm *p_formA, cmdForm *p_formT, spotEnt
 	lvi.pszText = str;
 	lvi.iItem = idx;
 	lvi.iSubItem = 2;	// modifier
-	success = ListView_SetItem(hwndListView, &lvi);
+	success = ListView_SetItem(m_hwndSpotLv, &lvi);
 	if (!success) {
 		MessageBox(NULL, 
   			L"Error: insertItemSpotLv_: failed to set item#2.\n",
@@ -10201,7 +10255,7 @@ void GameAirForce::insertItemSpotLv_(cmdForm *p_formA, cmdForm *p_formT, spotEnt
 	lvi.pszText = str;
 	lvi.iItem = idx;
 	lvi.iSubItem = 3;	// die roll
-	success = ListView_SetItem(hwndListView, &lvi);
+	success = ListView_SetItem(m_hwndSpotLv, &lvi);
 	if (!success) {
 		MessageBox(NULL, 
   			L"Error: insertItemSpotLv_: failed to set item#3.\n",
@@ -10212,14 +10266,20 @@ void GameAirForce::insertItemSpotLv_(cmdForm *p_formA, cmdForm *p_formT, spotEnt
 
 	if (die + modifier >= 4) {
 		wsprintf(str, L"Spotted");
+
+		cmdForm f = *p_formT;
+		f.command = SET_SPOTTED;
+		f.playerID = ALL_PLAYERS;
+		f.selectedAircraft = f.aircraftID;
+		cmdToGame(SET_SPOTTED, f, NULL);
 	} else {
-		wsprintf(str, L"-");
+		wsprintf(str, L"failed");
 	}
 	lvi.mask = LVIF_TEXT;
 	lvi.pszText = str;
 	lvi.iItem = idx;
 	lvi.iSubItem = 4;	// Result of spotting
-	success = ListView_SetItem(hwndListView, &lvi);
+	success = ListView_SetItem(m_hwndSpotLv, &lvi);
 	if (!success) {
 		MessageBox(NULL, 
   			L"Error: insertItemSpotLv_: failed to set item#4.\n",
@@ -10238,9 +10298,10 @@ int getIdxTargetSpotTbl(int idxSpotter,
 //
 	int	idxTarget = -1;
 	int	cntTarget = 0;
+	int	i;
 
 	for (i = 0; i < sizeSpotC; i++) {
-		if (p_entry[idxSpotter][i].assigned == true) {
+		if (p_entry[sizeSpotC * idxSpotter + i].assigned == true) {
 			idxTarget = i;
 			cntTarget ++;
 		}
@@ -10267,7 +10328,7 @@ void GameAirForce::insertItemsSpotLv_(
 		idxT = getIdxTargetSpotTbl(i, p_entry,sizeSpotC, sizeSpotL);
 		if (idxT >= 0) {
 			insertItemSpotLv_(
-				a_formA[i], a_formT[idxT], p_entry[i][idxT]);
+				a_formA + i, a_formT + idxT, p_entry + (sizeSpotC * i + idxT));
 		}
 	}
 	// under construction
@@ -10300,7 +10361,7 @@ void GameAirForce::createSpotTbl_(bool line0IsSpotter)
 	int	j = 0;
 
 	//-------- get ACs' info  --------
-	cmdForm a_form[MAX_PLAYER_CNT][MAX_AC_CNT +1];
+	cmdForm a_form[MAX_PLAYER_CNT][MAX_AC_CNT +1];	// allocate array of forms
 
 	for (i = 0; i < MAX_PLAYER_CNT; i++) {	// initialize array of forms
 		a_form[i][0].command = TAIL;
@@ -10310,13 +10371,13 @@ void GameAirForce::createSpotTbl_(bool line0IsSpotter)
 	int	cntACsPlayerA, cntACsPlayerT;
 	int	idxA, idxT;
 	if (line0IsSpotter) {
-		cntACsPlayerA = getACsCntFromForms(a_form[0]);
-		cntACsPlayerT = getACsCntFromForms(a_form[1]);
+		cntACsPlayerA = getACsCntFromForms(a_form[0], false);
+		cntACsPlayerT = getACsCntFromForms(a_form[1], true);
 		idxA = 0;
 		idxT = 1;
 	} else {
-		cntACsPlayerA = getACsCntFromForms(a_form[1]);
-		cntACsPlayerT = getACsCntFromForms(a_form[0]);
+		cntACsPlayerA = getACsCntFromForms(a_form[1], false);
+		cntACsPlayerT = getACsCntFromForms(a_form[0], true);
 		idxA = 1;
 		idxT = 0;
 	}
@@ -10332,29 +10393,45 @@ void GameAirForce::createSpotTbl_(bool line0IsSpotter)
 //		);
 
 	//-------- allocate mem. for spotTbl --------
-	spotEntry *a_spotTbl = new spotEntry[cntACsPlayerA][cntACsPlayerT];
+//	spotEntry *a_spotTbl = new spotEntry[cntACsPlayerA][cntACsPlayerT];
+// Pitfall:180610
+//  memory allocation of array by new command is one dimension array only.
+//  cannot new xxx[i][j]
+//
+	spotEntry *a_spotTbl = new spotEntry[cntACsPlayerA * cntACsPlayerT];
+// Memo:2018/0616
+//  debugger cannot trace *a_spotTbl except the first element of the array.
+//  So for the purpose of debugging, result = a_spotTbl[] was added .
 
 	//-------- fill in modifier of spotTbl --------
 	
 	int	factorEvapt_Dist = -7;
+	int	ptModifier, ptDist, ptAlt, result
+		;
 
 	for (i =0; i < cntACsPlayerA; i++) {
 		for (j = 0; j < cntACsPlayerT; j++) {
-			a_spotTbl[i][j].evaPt 
-				= this->getSpotModifier_(a_form[idxA][i], a_form[idxT][j])
-				+ getDistanceHex(a_form[idxA][i], a_form[idxT][j]) 
-				@/ factorEvapt_Dist
-				+ (int) (abs(
-					a_form[idxA][i].alt - a_form[idxT][j].alt
-					     ) / 500.0f / factorEvapt_Dist
-					);
+			if (a_form[idxA][j].spotted == false) {
+				ptModifier = this->getSpotModifier_(a_form[idxA][i], a_form[idxT][j]);
+				ptDist = getDistanceHex(a_form[idxA][i], a_form[idxT][j]) 
+					 / factorEvapt_Dist;
+				ptAlt = (int) (abs(
+						a_form[idxA][i].alt - a_form[idxT][j].alt
+						     ) / 0.5f / factorEvapt_Dist
+						);
+				a_spotTbl[cntACsPlayerT * i + j].modifier 
+					= ptModifier;
+				a_spotTbl[cntACsPlayerT * i + j].evaPt 
+					= ptModifier + ptDist + ptAlt;
+				result = a_spotTbl[cntACsPlayerT * i + j].evaPt;	// for debug
+			}
 		}
 	}
 	solveSpotTbl(a_spotTbl, cntACsPlayerT, cntACsPlayerA);
 	insertItemsSpotLv_(a_spotTbl, cntACsPlayerT, cntACsPlayerA,
 		a_form[idxA], a_form[idxT]);
 
-	delete[][] a_spotTbl;
+	delete[] a_spotTbl;
 }
 
 
@@ -10390,10 +10467,10 @@ void GameAirForce::OnButtonProceed()
 			break;
 		case GM_BAILOUT:
 			m_gameMode = GM_SPOT;
+			onEnterGameModeSpot_();
 			break;
 		case GM_SPOT:
 			m_gameMode = GM_DET_ADV;
-			onEnterGameModeSpot();
 			break;
 		case GM_DET_ADV:
 			m_gameMode = GM_PLOT_MOVE;
@@ -10892,7 +10969,7 @@ HWND GameAirForce::createFiringTable()
 	m_hwndLV_FiringTable = CreateWindow(WC_LISTVIEW,
 			L"abc",
 			WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT,
-			100, 200, 880, 400,
+			100, 200, 880, 200,	// x, y, width, height
 			m_hwnd,
 			(HMENU) IDC_LV_GAME_FIRINGTBL,
 			(HINSTANCE)GetWindowLong(m_hwnd, GWLP_HINSTANCE),
@@ -10985,7 +11062,7 @@ HWND GameAirForce::createSpotLv_()
 	m_hwndSpotLv = CreateWindow(WC_LISTVIEW,
 			L"Spotting Table",
 			WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT,
-			100, 900, 880, 400,
+			100, 450, 880, 200,	// x, y, width, height
 			m_hwnd,
 			(HMENU) IDC_LV_GAME_SPOTTBL,
 			(HINSTANCE)GetWindowLong(m_hwnd, GWLP_HINSTANCE),
