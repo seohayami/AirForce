@@ -993,9 +993,9 @@ void getPrevTwoManuvFormMode(int *last, int *secondLast, cmdForm f)
 				*last = f.manuv[i];
 			}
 		}
-		if (*secondLast != MANUV_EN) {
-			return;
-		}
+//		if (*secondLast != MANUV_EN) {
+//			return;
+//		}
 	}
 	if (*secondLast == MANUV_EN) { // need to go back to log data of previous GameTurns
 		for (i = 0; f.prevManuv[i] != MANUV_EN; i++) {
@@ -1995,8 +1995,8 @@ void Aircraft::createPlotBranchRecursively_(plotNode *p_node, cmdForm form, int 
 	int		m = mp;
 	manuType	manuT = convertManuvToManuType(manu);	
 
-	this->getManuvable_(form, &form, true);
 	pf_parseManuv[manuT](&form, &mp);
+	this->getManuvable_(form, &form, true);
 	modifyManeuverableByParsedManuv(&form);
 	
 	plotNode	*p_new(new plotNode);
