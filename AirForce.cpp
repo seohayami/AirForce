@@ -2009,7 +2009,7 @@ void Aircraft::createPlotBranchRecursively_(plotNode *p_node, cmdForm form, int 
 
 	if (mp == 0) {
 		cmdForm	*p_f(new cmdForm);
-		(*p_f) = f;
+		(*p_f) = f;			// under construction: need to check
 		p_new->p_plotForm = p_f;
 		this->appendPlotNodeLeaves_(p_new);
 	} else {
@@ -10330,7 +10330,6 @@ void GameAirForce::insertItemsSpotLv_(
 				a_formA + i, a_formT + idxT, p_entry + (sizeSpotC * i + idxT));
 		}
 	}
-	// under construction
 }
 
 void GameAirForce::createSpotTbl_(bool line0IsSpotter)
